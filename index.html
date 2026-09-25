@@ -241,7 +241,8 @@
   .words .placeholder { font-size: clamp(1.05rem, 2.4vw, 1.7rem); color: var(--muted); font-weight: 700; letter-spacing: .06em; }
   .word {
     position: relative; display: flex; align-items: center; gap: .4em; min-width: 0;
-    padding: .1em .45em .1em .32em; border-radius: .06em;
+    /* 右側は文字0.8個分の余白を確保する（D-7）。文字サイズの自動調整もこの余白を守る */
+    padding: .1em .8em .1em .32em; border-radius: .06em;
     background: linear-gradient(90deg, rgba(237, 227, 207, .075), rgba(237, 227, 207, .025));
     border: .015em solid var(--line);
     border-left: .12em solid var(--c);
@@ -1010,9 +1011,13 @@
     if (wordsEl.clientHeight <= 0 || wordsEl.clientWidth <= 0) return;
     const maxSize = Math.min(innerHeight * 0.13, innerWidth * 0.085, 140);
     const cells = [...wordsEl.children];
+    // パネル全体だけでなく、発言の文字自体が右の余白に食い込んでいないかも判定する（D-7）
     const fits = () =>
       wordsEl.scrollHeight <= wordsEl.clientHeight + 1 &&
-      cells.every(c => c.scrollWidth <= c.clientWidth + 1);
+      cells.every(c => {
+        const t = c.querySelector('.text');
+        return c.scrollWidth <= c.clientWidth + 1 && (!t || t.scrollWidth <= t.clientWidth + 1);
+      });
 
     // 1列の行数は「回答者数×2」。最初の3列までは列幅を固定して、表示位置が動かないようにする
     const PER_COL = state.names.length * 2;
