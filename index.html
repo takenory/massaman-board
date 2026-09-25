@@ -367,8 +367,9 @@
     border: 1px solid var(--current, var(--line)); border-left-width: 4px; border-radius: 4px;
     caret-color: var(--current, var(--sand)); outline: none;
   }
-  /* 本番画面では入力欄を見せず、キーボード入力だけを受け付ける */
-  .dock #answerInput {
+  /* 本番画面では入力欄を見せず、キーボード入力だけを受け付ける。
+     ドックの外に置くので、ドックを折りたたんでも入力できる（V-2） */
+  #board > #answerInput {
     position: absolute; width: 1px; height: 1px; min-width: 1px; padding: 0;
     opacity: 0; overflow: hidden; clip-path: inset(50%); pointer-events: none;
   }
@@ -438,10 +439,10 @@
   <div class="players-strip" id="playersStrip">
     <div class="who-tabs" id="whoTabs" role="group" aria-label="発言者"></div>
   </div>
+  <input id="answerInput" type="text" placeholder="発言をタイプして Enter" autocomplete="off" aria-label="回答者の発言">
   <footer class="dock collapsed" id="dock">
     <button id="dockToggle" class="dock-toggle" type="button" aria-label="入力ドックを表示" title="入力ドックを表示">⌃</button>
     <div class="dock-body">
-      <input id="answerInput" type="text" placeholder="発言をタイプして Enter" autocomplete="off" aria-label="回答者の発言">
       <div class="tools">
         <button id="undoBtn" class="ghost" type="button">一つ戻す</button>
         <button id="fsBtn" class="ghost fs-toggle" type="button">全画面</button>
@@ -818,7 +819,8 @@
     toggle.textContent = hidden ? '⌃' : '⌄';
     toggle.setAttribute('aria-label', hidden ? '入力ドックを表示' : '入力ドックを折りたたむ');
     toggle.title = hidden ? '入力ドックを表示' : '入力ドックを折りたたむ';
-    if (hidden) answerInput.blur(); else answerInput.focus();
+    // 入力欄はドックの外にあるため、開閉にかかわらず入力を受け付け続ける（V-2）
+    answerInput.focus();
   }
   $('dockToggle').addEventListener('click', () => setDockHidden(!dockEl.classList.contains('collapsed')));
   let duplicateTimer;
@@ -875,6 +877,15 @@
   }
   answerInput.addEventListener('input', updateEcho);
 
+  // 入力欄は画面に見せないため、編集位置（キャレット）は常に末尾に置く（F-8）。
+  // Chrome では見えない入力欄で IME を確定するとキャレットが先頭に戻り、Backspace で消せなくなるため
+  function caretToEnd() {
+    const n = answerInput.value.length;
+    if (answerInput.selectionStart !== n || answerInput.selectionEnd !== n) answerInput.setSelectionRange(n, n);
+  }
+  answerInput.addEventListener('compositionend', () => setTimeout(caretToEnd, 0));
+  answerInput.addEventListener('focus', caretToEnd);
+
   // エントリー名・お題も、発言と同じ解読エコーで受け付ける
   function updateStageEcho(input, label, color) {
     const chars = [...input.value];
@@ -925,9 +936,10 @@
       e.preventDefault();
       const active = activePlayers();
       setCurrent(active[(active.indexOf(state.current) + (e.shiftKey ? -1 : 1) + active.length) % active.length]);
-    } else if (e.key === 'Backspace' && answerInput.value === '' && !isComposingEnter(e)) {
-      e.preventDefault();
-      undo();
+    } else if (e.key === 'Backspace' && !isComposingEnter(e)) {
+      if (answerInput.value === '') { e.preventDefault(); undo(); }
+      // 確定済みの文字を末尾から1文字ずつ消す（F-8）。重複時の全選択など範囲選択中はそのまま消す
+      else if (answerInput.selectionStart === answerInput.selectionEnd) caretToEnd();
     }
   });
 
@@ -1095,13 +1107,15 @@
     themeInput.focus();
   });
 
-  // ドックを隠している間に文字を打つと自動で再表示（V-2）。Escは全画面操作に委ねる。
+  // ボタン操作などでフォーカスが外れていても、文字キーで入力欄に戻す（V-2）。ドックは開かない。
+  // 日本語入力中のキーは key が 'Process' になるため、それも対象にする。Esc は全画面操作に委ねる。
   document.addEventListener('keydown', e => {
-    if (!boardEl.classList.contains('active') || !dockEl.classList.contains('collapsed')) return;
-    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      setDockHidden(false);
-    }
-  });
+    if (!boardEl.classList.contains('active') || state.winner !== null) return;
+    const a = document.activeElement;
+    if (a === answerInput || (a && a.matches('input, textarea'))) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key.length === 1 || e.key === 'Process' || e.keyCode === 229) answerInput.focus();
+  }, true);
 })();
 </script>
 </body>
