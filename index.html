@@ -89,11 +89,11 @@
   @keyframes blink { 50% { opacity: .15; } }
 
   /* ============ お題入力画面 ============ */
-  #setup {
+  #entry, #setup {
     flex-direction: column; align-items: center; justify-content: center;
     gap: clamp(1.4rem, 4vh, 2.6rem); padding: 2rem 6vw; text-align: center;
   }
-  #setup h1 {
+  #entry h1, #setup h1 {
     margin: 0; font-family: var(--mincho); font-weight: 900;
     font-size: clamp(1.8rem, 4.2vw, 3.3rem); letter-spacing: .08em;
   }
@@ -283,6 +283,33 @@
     border: 1px solid var(--line); border-left: 4px solid var(--c);
   }
   .who-tabs button[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: var(--on-color); }
+  .player-box { display: flex; flex-direction: column; gap: .25rem; min-width: 6rem; }
+  .player-box.out { opacity: .6; }
+  .player-box .eliminate { font-size: .72rem; padding: .3em; border-left-width: 1px; }
+  .who-tabs button:disabled { cursor: default; }
+  .event-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(16,13,10,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem; padding: 5vw; text-align: center; }
+  .event-overlay[hidden] { display: none; }
+  .event-overlay h2 { margin: 0; color: var(--sand); font-size: clamp(1.5rem, 4vw, 3rem); }
+  .event-overlay p { margin: 0; max-width: 100%; overflow-wrap: anywhere; font-family: var(--mincho); font-size: clamp(2rem, 9vw, 7rem); }
+  #winnerEvent { overflow: hidden; isolation: isolate; background: radial-gradient(circle at 50% 48%, rgba(201,165,106,.18), transparent 42%), rgba(16,13,10,.94); }
+  #winnerEvent::before { content: ""; position: absolute; inset: 8%; border: 1px solid rgba(201,165,106,.25); background: repeating-linear-gradient(0deg, transparent 0 18px, rgba(237,227,207,.035) 19px 20px); opacity: .55; pointer-events: none; z-index: -1; }
+  #winnerEvent::after { content: "勝者確定"; position: absolute; top: 16%; right: 10%; color: var(--signal); border: .12em solid var(--signal); padding: .25em .45em; font-family: var(--mincho); font-weight: 900; letter-spacing: .15em; transform: rotate(-8deg) scale(0); opacity: 0; pointer-events: none; }
+  #winnerEvent.winner-reveal::after { animation: winner-stamp .55s .35s cubic-bezier(.3,1.6,.5,1) forwards; }
+  #winnerEvent.winner-reveal #winnerTitle { animation: winner-title .55s ease-out both; }
+  #winnerEvent.winner-reveal #winnerName { animation: winner-name .8s .18s cubic-bezier(.2,1.4,.4,1) both; }
+  #winnerEvent.winner-reveal #closeWinner { animation: winner-button .45s .55s ease-out both; }
+  @keyframes winner-stamp { from { transform: rotate(-8deg) scale(2.8); opacity: 0; } to { transform: rotate(-8deg) scale(1); opacity: .9; } }
+  @keyframes winner-title { from { opacity: 0; letter-spacing: .8em; transform: translateY(-.5em); } to { opacity: 1; letter-spacing: .15em; transform: none; } }
+  @keyframes winner-name { from { opacity: 0; transform: scale(.55); text-shadow: 0 0 0 transparent; } 65% { opacity: 1; transform: scale(1.06); text-shadow: 0 0 .15em var(--sand), 0 0 1em rgba(201,165,106,.55); } to { transform: scale(1); text-shadow: 0 0 .08em var(--sand), 0 0 .45em rgba(201,165,106,.3); } }
+  @keyframes winner-button { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: none; } }
+  #duplicateEvent { pointer-events: none; }
+  #entrySummary { color: var(--sand); overflow-wrap: anywhere; }
+  #entry { overflow-y: auto; }
+  #names { list-style: none; margin: 0; padding: 0; }
+  #names li { padding: .6rem 1rem; overflow-wrap: anywhere; max-width: 100%; }
+  .participant-list { display: flex; flex-wrap: wrap; justify-content: center; gap: .55rem; max-width: 1000px; margin: 0; padding: 0; list-style: none; }
+  .participant-list li { padding: .55rem .9rem; border-left: 4px solid var(--c); border-radius: 3px; background: var(--card); border-top: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font-weight: 700; }
+  button:disabled { opacity: .4; cursor: default; }
   #answerInput {
     flex: 1 1 16rem; min-width: 0; padding: .55em .9em;
     font-size: 1.3rem; font-weight: 700;
@@ -298,7 +325,7 @@
   #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
 
   @media (prefers-reduced-motion: reduce) {
-    .rec-dot, .letterbox, .ch.lock, .theme-band .tag.stamp, .word.new, .word.stamped, .word.stamped::after { animation: none; }
+    .rec-dot, .letterbox, .ch.lock, .theme-band .tag.stamp, .word.new, .word.stamped, .word.stamped::after, #winnerEvent.winner-reveal::after, #winnerEvent.winner-reveal #winnerTitle, #winnerEvent.winner-reveal #winnerName, #winnerEvent.winner-reveal #closeWinner { animation: none; }
     .words, .echo { transition: none; }
   }
 </style>
@@ -306,23 +333,27 @@
 <body>
 
 <!-- お題入力 -->
-<section id="setup" class="screen active" aria-label="お題入力">
+<section id="entry" class="screen active" aria-label="参加者エントリー">
   <button id="fsBtnSetup" class="ghost setup-fs fs-toggle" type="button">全画面</button>
-  <h1>お題を入力してください</h1>
-  <input id="themeInput" class="theme-field" type="text" placeholder="例：夏の終わり" autocomplete="off" autofocus aria-label="お題">
-  <div class="players">
-    <div class="count-row">
-      <span id="countLabel">回答者</span>
-      <div class="stepper" role="group" aria-labelledby="countLabel">
-        <button id="countDown" type="button" aria-label="人数を減らす">−</button>
-        <output id="countOut" aria-live="polite">3人</output>
-        <button id="countUp" type="button" aria-label="人数を増やす">＋</button>
-      </div>
-    </div>
-    <div class="names" id="names" aria-label="回答者の名前（任意）"></div>
+  <h1 id="entryHeading">1人目の名前を入力してください</h1>
+  <input id="nameInput" class="theme-field" type="text" placeholder="参加者の名前" autocomplete="off" aria-label="参加者の名前">
+  <p id="entryError" class="hint" role="status"></p>
+  <p class="hint">Enter で確定して、次の参加者を入力（最大6名）</p>
+  <p id="entryCount" class="hint"></p>
+  <ol class="names" id="names" aria-label="登録済みの参加者" aria-live="polite"></ol>
+  <div class="setup-actions">
+    <button id="entryBtn" class="primary" type="button" hidden>お題の入力へ</button>
+    <button id="undoEntryBtn" class="ghost" type="button">1つ戻す</button>
   </div>
+</section>
+<section id="setup" class="screen" aria-label="お題入力">
+  <button class="ghost setup-fs fs-toggle" type="button">全画面</button>
+  <h1>お題を入力してください</h1>
+  <input id="themeInput" class="theme-field" type="text" placeholder="例：夏の終わり" autocomplete="off" aria-label="お題">
+  <ol id="setupNames" class="participant-list" aria-label="参加者"></ol>
   <div class="setup-actions">
     <button id="startBtn" class="primary" type="button">開始する</button>
+    <button id="editEntryBtn" class="ghost" type="button">参加者を編集</button>
     <p class="hint">お題の入力後に <kbd>Enter</kbd> でも開始できます</p>
   </div>
 </section>
@@ -366,17 +397,25 @@
   <div class="echo-text" id="echoText"></div>
 </div>
 
+<div id="duplicateEvent" class="event-overlay" role="alert" hidden>
+  <h2>すでに出た発言です</h2><p id="duplicateText"></p>
+  <span>記録せず、そのままの手番で続けます</span>
+</div>
+<div id="winnerEvent" class="event-overlay" role="dialog" aria-modal="true" aria-labelledby="winnerTitle" aria-describedby="winnerName" hidden>
+  <h2 id="winnerTitle">勝者</h2><p id="winnerName"></p>
+  <button id="closeWinner" class="ghost" type="button">ボードに戻る</button>
+</div>
 <canvas id="fx" aria-hidden="true"></canvas>
 
 <script>
 (() => {
   const COLORS = ['#E0533B', '#D9A441', '#3FA595', '#6F96CC', '#9DB46B', '#A881BE'];
   const SAND = '#C9A56A', BONE = '#EDE3CF', DUNE = '#8A6E47';
-  const MIN_PLAYERS = 1, MAX_PLAYERS = COLORS.length;
-  const state = { theme: '', names: [], words: [], current: 0 };
+  const MIN_PLAYERS = 2, MAX_PLAYERS = COLORS.length;
+  const state = { theme: '', names: [], words: [], current: 0, eliminated: new Set(), winner: null };
 
   const $ = id => document.getElementById(id);
-  const screens = ['setup', 'announce', 'board'];
+  const screens = ['entry', 'setup', 'announce', 'board'];
   const show = id => screens.forEach(s => $(s).classList.toggle('active', s === id));
   const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const pad2 = n => String(n).padStart(2, '0');
@@ -513,39 +552,73 @@
   });
   $('startBtn').addEventListener('click', start);
 
-  let playerCount = 3;
-  const nameDrafts = [];   // 人数を減らしても入力済みの名前を覚えておく（S-5）
+  const nameDrafts = [];
+  const nameInput = $('nameInput');
   const namesEl = $('names');
-  function renderNameInputs() {
-    [...namesEl.querySelectorAll('input')].forEach((inp, i) => { nameDrafts[i] = inp.value; });
-    namesEl.innerHTML = '';
-    for (let i = 0; i < playerCount; i++) {
-      const label = document.createElement('label');
-      label.className = 'name-chip';
-      label.style.setProperty('--c', COLORS[i]);
-      const inp = document.createElement('input');
-      inp.value = nameDrafts[i] ?? `回答者${i + 1}`;
-      inp.setAttribute('aria-label', `回答者${i + 1}の名前`);
-      label.append(inp);
-      namesEl.appendChild(label);
-    }
-    $('countOut').textContent = `${playerCount}人`;
-    $('countDown').disabled = playerCount <= MIN_PLAYERS;
-    $('countUp').disabled = playerCount >= MAX_PLAYERS;
+  const setupNamesEl = $('setupNames');
+  function renderParticipantList(target, names) {
+    target.replaceChildren();
+    names.forEach((name, i) => {
+      const item = document.createElement('li');
+      if (target === namesEl) item.className = 'name-chip';
+      item.style.setProperty('--c', COLORS[i]);
+      item.textContent = `${pad2(i + 1)}　${name}`;
+      target.appendChild(item);
+    });
   }
-  $('countDown').addEventListener('click', () => { playerCount = Math.max(MIN_PLAYERS, playerCount - 1); renderNameInputs(); });
-  $('countUp').addEventListener('click', () => { playerCount = Math.min(MAX_PLAYERS, playerCount + 1); renderNameInputs(); });
-  namesEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !isComposingEnter(e)) { e.preventDefault(); start(); }
+  function renderEntries() {
+    renderParticipantList(namesEl, nameDrafts);
+    $('entryCount').textContent = `${nameDrafts.length}名がエントリー済み ／ 最大6名`;
+    nameInput.disabled = nameDrafts.length >= MAX_PLAYERS;
+    $('entryHeading').textContent = nameInput.disabled ? '参加者が6名になりました' : `${nameDrafts.length + 1}人目の名前を入力してください`;
+    $('entryBtn').hidden = nameDrafts.length < MIN_PLAYERS;
+    $('undoEntryBtn').disabled = !nameDrafts.length;
+  }
+  function openEntry() {
+    renderEntries();
+    $('entryError').textContent = '';
+    show('entry');
+    (nameInput.disabled ? $('entryBtn') : nameInput).focus();
+  }
+  function addEntry() {
+    const name = nameInput.value.trim();
+    if (!name) { $('entryError').textContent = '名前を入力してください'; nameInput.focus(); return; }
+    if (nameDrafts.length >= MAX_PLAYERS) return;
+    nameDrafts.push(name);
+    nameInput.value = '';
+    openEntry();
+  }
+  nameInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !isComposingEnter(e)) { e.preventDefault(); addEntry(); }
   });
-  renderNameInputs();
+  $('undoEntryBtn').addEventListener('click', () => {
+    if (!nameDrafts.length) return;
+    nameDrafts.pop();
+    openEntry();
+  });
+  renderEntries();
+  nameInput.focus();
+  function completeEntry() {
+    if (nameDrafts.length < MIN_PLAYERS) return;
+    if (nameInput.value.trim()) { $('entryError').textContent = '入力中の名前を Enter で確定してください'; nameInput.focus(); return; }
+    if (!nameDrafts.length) return;
+    state.names = [...nameDrafts];
+    renderParticipantList(setupNamesEl, state.names);
+    show('setup');
+    themeInput.focus();
+  }
+  $('entryBtn').addEventListener('click', completeEntry);
+  $('editEntryBtn').addEventListener('click', openEntry);
 
   function start() {
     const theme = themeInput.value.trim();
     if (!theme) { themeInput.focus(); themeInput.placeholder = 'お題が空です。入力してください'; return; }
     state.theme = theme;
-    state.names = [...namesEl.querySelectorAll('input')].map((inp, i) => inp.value.trim() || `回答者${i + 1}`);
+    state.names = [...nameDrafts];
     state.words = [];
+    state.eliminated.clear();
+    state.winner = null;
+    answerInput.disabled = false;
     state.current = 0;
     $('themeText').textContent = theme;
     buildTabs();
@@ -588,19 +661,68 @@
     const tabs = $('whoTabs');
     tabs.innerHTML = '';
     state.names.forEach((n, i) => {
+      const box = document.createElement('div');
+      box.className = 'player-box' + (state.eliminated.has(i) ? ' out' : '');
+      box.style.setProperty('--c', COLORS[i]);
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = n;
+      b.textContent = n + (state.eliminated.has(i) ? '（脱落）' : state.winner === i ? '（勝者）' : '');
+      b.dataset.player = i;
+      b.disabled = state.eliminated.has(i);
       b.style.setProperty('--c', COLORS[i]);
       b.addEventListener('click', () => { setCurrent(i); answerInput.focus(); });
-      tabs.appendChild(b);
+      const mark = document.createElement('button');
+      mark.type = 'button';
+      mark.className = 'eliminate';
+      mark.textContent = state.eliminated.has(i) ? '復帰させる' : '脱落にする';
+      mark.setAttribute('aria-label', `${n}を${mark.textContent}`);
+      mark.disabled = !state.eliminated.has(i) && activePlayers().length <= 1;
+      mark.addEventListener('click', () => toggleElimination(i));
+      box.append(b, mark);
+      tabs.appendChild(box);
     });
-    setCurrent(0);
+    setCurrent(state.current);
   }
+  function activePlayers() { return state.names.map((_, i) => i).filter(i => !state.eliminated.has(i)); }
+  function toggleElimination(i) {
+    clearDuplicate();
+    if (state.eliminated.has(i)) state.eliminated.delete(i);
+    else if (activePlayers().length > 1) state.eliminated.add(i);
+    const remaining = activePlayers();
+    state.winner = state.names.length > 1 && remaining.length === 1 ? remaining[0] : null;
+    answerInput.disabled = state.winner !== null;
+    if (state.winner !== null) { answerInput.value = ''; hideEcho(); }
+    buildTabs();
+    // 脱落・復帰では発言内容が変わらないため、既存パネルの文字サイズを維持する
+    if (state.winner !== null) {
+      $('winnerName').textContent = state.names[state.winner];
+      const winnerEvent = $('winnerEvent');
+      winnerEvent.classList.remove('winner-reveal');
+      void winnerEvent.offsetWidth;
+      winnerEvent.classList.add('winner-reveal');
+      winnerEvent.hidden = false;
+      boardEl.inert = true;
+      $('closeWinner').focus();
+      gust(innerHeight / 2, innerHeight * .4);
+    } else answerInput.focus();
+  }
+  $('closeWinner').addEventListener('click', () => {
+    $('winnerEvent').hidden = true;
+    $('winnerEvent').classList.remove('winner-reveal');
+    boardEl.inert = false;
+    $('resetBtn').focus();
+  });
+  $('closeWinner').addEventListener('keydown', e => {
+    if (e.key === 'Tab') { e.preventDefault(); }
+    if (e.key === 'Escape') { e.stopPropagation(); $('closeWinner').click(); }
+  });
+  let duplicateTimer;
+  function clearDuplicate() { clearTimeout(duplicateTimer); $('duplicateEvent').hidden = true; }
   function setCurrent(i) {
     const n = state.names.length;
     state.current = ((i % n) + n) % n;
-    [...$('whoTabs').children].forEach((b, j) => b.setAttribute('aria-pressed', j === state.current));
+    while (state.eliminated.has(state.current)) state.current = (state.current + 1) % n;
+    $('whoTabs').querySelectorAll('[data-player]').forEach(b => b.setAttribute('aria-pressed', Number(b.dataset.player) === state.current));
     const color = COLORS[state.current];
     answerInput.style.setProperty('--current', color);
     answerInput.placeholder = `${state.names[state.current]} の発言をタイプして Enter`;
@@ -611,6 +733,7 @@
   // ============ エコー（E-1〜E-3） ============
   let echoPrev = [];
   function updateEcho() {
+    clearDuplicate();
     const chars = [...answerInput.value];
     if (!answerInput.value.trim()) { hideEcho(); return; }
     boardEl.classList.add('typing');
@@ -647,10 +770,21 @@
 
   // ============ 発言の入力（F-1〜F-7） ============
   answerInput.addEventListener('keydown', e => {
+    if (state.winner !== null) return;
     if (e.key === 'Enter' && !isComposingEnter(e)) {
       e.preventDefault();
       const text = answerInput.value.trim();
       if (!text) return;
+      if (state.words.some(w => w.text === text)) {
+        hideEcho();
+        clearDuplicate();
+        $('duplicateText').textContent = text;
+        $('duplicateEvent').hidden = false;
+        duplicateTimer = setTimeout(clearDuplicate, 2200);
+        answerInput.select();
+        return;
+      }
+      clearDuplicate();
       const from = echoEl.classList.contains('show') ? echoText.getBoundingClientRect() : null;
       state.words.push({ text, who: state.current });
       answerInput.value = '';
@@ -660,7 +794,8 @@
       setCurrent(state.current + 1);
     } else if (e.key === 'Tab') {
       e.preventDefault();
-      setCurrent(state.current + (e.shiftKey ? -1 : 1));
+      const active = activePlayers();
+      setCurrent(active[(active.indexOf(state.current) + (e.shiftKey ? -1 : 1) + active.length) % active.length]);
     } else if (e.key === 'Backspace' && answerInput.value === '' && !isComposingEnter(e)) {
       e.preventDefault();
       undo();
@@ -743,6 +878,8 @@
   // 単語が増えても画面に収まるよう文字サイズを自動調整（D-8）
   function fit() {
     if (!boardEl.classList.contains('active') || state.words.length === 0) return;
+    // ドックの再描画中など、発言領域の高さが未確定なフレームでは計算しない
+    if (wordsEl.clientHeight <= 0 || wordsEl.clientWidth <= 0) return;
     const maxSize = Math.min(innerHeight * 0.13, innerWidth * 0.085, 140);
     const cells = [...wordsEl.children];
     const fits = () =>
@@ -773,7 +910,7 @@
     const d = document;
     if (!d.fullscreenElement) d.documentElement.requestFullscreen?.().catch(() => {});
     else d.exitFullscreen?.();
-    ($('setup').classList.contains('active') ? themeInput : answerInput).focus();
+    ($('entry').classList.contains('active') ? (nameInput.disabled ? $('entryBtn') : nameInput) : $('setup').classList.contains('active') ? themeInput : answerInput).focus();
   }));
   document.addEventListener('fullscreenchange', () => {
     const label = document.fullscreenElement ? '全画面を終了' : '全画面';
@@ -798,6 +935,7 @@
       return;
     }
     disarmReset();
+    clearDuplicate();
     state.words = [];
     answerInput.value = '';
     hideEcho();
@@ -811,7 +949,7 @@
 
   // 表示専用モード（V-1, V-2）
   document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape' || !boardEl.classList.contains('active')) return;
+    if (e.key !== 'Escape' || !boardEl.classList.contains('active') || !$('winnerEvent').hidden) return;
     dockEl.classList.toggle('hidden');
     requestAnimationFrame(fit);
     if (dockEl.classList.contains('hidden')) answerInput.blur(); else answerInput.focus();
