@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>マッサマンゲーム 表示ボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F2B63C;        /* ターメリック */
+    --ink: #3A1F10;       /* ローストしたカレー色 */
+    --paper: #FFF6E2;     /* ココナッツミルク */
+    --p1: #C8321F;        /* 唐辛子 */
+    --p2: #2F7A3E;        /* バジル */
+    --p3: #2B4F9E;        /* 藍 */
+    --muted: rgba(58,31,16,.55);
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #2A1A0E; --ink: #FFE9BF; --paper: #3B2614;
+      --p1: #FF6B52; --p2: #6CCB7E; --p3: #7FA2F2; --muted: rgba(255,233,191,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #2A1A0E; --ink: #FFE9BF; --paper: #3B2614;
+    --p1: #FF6B52; --p2: #6CCB7E; --p3: #7FA2F2; --muted: rgba(255,233,191,.55);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
+    overflow: hidden;
+  }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+  /* ---------- 画面切替 ---------- */
+  .screen { position: absolute; inset: 0; display: none; }
+  .screen.active { display: flex; }
+
+  /* ---------- お題入力 ---------- */
+  #setup { flex-direction: column; align-items: center; justify-content: center; gap: 2.5rem; padding: 2rem; }
+  #setup h1 { margin: 0; font-weight: 900; font-size: clamp(2rem, 6vw, 4.5rem); letter-spacing: .04em; }
+  .theme-field {
+    width: min(900px, 100%); border: none; border-bottom: 6px solid var(--ink);
+    background: transparent; font-size: clamp(2rem, 6vw, 4.5rem); font-weight: 700;
+    text-align: center; padding: .3em 0; outline: none;
+  }
+  .theme-field::placeholder { color: var(--muted); }
+  .names { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+  .names label { display: flex; align-items: center; gap: .5rem; font-weight: 700; }
+  .names .dot { width: 1rem; height: 1rem; border-radius: 50%; }
+  .names input {
+    width: 9em; padding: .4em .6em; border: 2px solid var(--ink); border-radius: .5em;
+    background: var(--paper); font-weight: 700;
+  }
+  .hint { color: var(--muted); font-size: 1rem; margin: 0; text-align: center; }
+
+  /* ---------- 開始アナウンス ---------- */
+  #announce { align-items: center; justify-content: center; background: var(--ink); color: var(--bg); }
+  #announce p { margin: 0; font-weight: 900; font-size: clamp(2.5rem, 9vw, 7rem); animation: stamp .6s cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes stamp { from { transform: scale(2.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* ---------- 本番ボード ---------- */
+  #board { flex-direction: column; }
+  .theme-band {
+    background: var(--ink); color: var(--bg);
+    padding: clamp(.8rem, 2.5vh, 2rem) 4vw;
+    display: flex; align-items: baseline; gap: 1.5vw;
+  }
+  .theme-band .tag { font-weight: 700; font-size: clamp(1rem, 2.4vw, 2rem); opacity: .75; white-space: nowrap; }
+  .theme-band .theme { font-weight: 900; font-size: clamp(2rem, 7vw, 6.5rem); line-height: 1.1; word-break: break-word; }
+
+  /* 上→下に6個ずつ、埋まったら右の列へ */
+  .words {
+    flex: 1; min-height: 0; overflow: hidden;
+    padding: 3vh 4vw;
+    display: grid;
+    grid-template-rows: repeat(6, auto);
+    grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+    grid-auto-flow: column;
+    align-content: start; gap: .3em .5em;
+    font-size: 64px; /* JSで自動調整 */
+  }
+  .words.empty { display: flex; align-items: center; justify-content: center; }
+  .words .placeholder { font-size: clamp(1.2rem, 3vw, 2rem); color: var(--muted); font-weight: 700; }
+  .word {
+    position: relative; display: flex; align-items: center; gap: .3em;
+    min-width: 0; background: var(--paper); border-radius: .35em;
+    padding: .1em .4em .1em .15em; font-weight: 900; line-height: 1.25;
+    border: .06em solid var(--c);
+  }
+  .word .num {
+    flex: none; min-width: 1.5em; height: 1.5em; padding: 0 .2em; border-radius: .3em;
+    display: grid; place-items: center;
+    background: var(--c); color: var(--paper);
+    font-size: .5em; font-weight: 900; font-variant-numeric: tabular-nums;
+  }
+  .word .body { display: flex; flex-direction: column; min-width: 0; }
+  .word .text { white-space: nowrap; }
+  .word .who {
+    font-size: .28em; font-weight: 700; color: var(--c); line-height: 1.2;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* 直前の発言を目立たせる */
+  .word.latest { background: var(--c); color: var(--paper); }
+  .word.latest .num { background: var(--paper); color: var(--c); }
+  .word.latest .who { color: var(--paper); }
+  .word.new { animation: pop .38s cubic-bezier(.2,1.5,.45,1) both; }
+  @keyframes pop { from { transform: scale(.4) translateY(.4em); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* ---------- 入力バー ---------- */
+  .console {
+    display: flex; gap: .8rem; align-items: center; flex-wrap: wrap;
+    padding: .8rem 4vw; border-top: 3px solid var(--ink); background: var(--bg);
+  }
+  .console.hidden { display: none; }
+  .who-tabs { display: flex; gap: .4rem; }
+  .who-tabs button {
+    border: 2px solid var(--c); background: transparent; color: var(--c);
+    padding: .35em .8em; border-radius: 999px; font-weight: 700; cursor: pointer;
+  }
+  .who-tabs button[aria-pressed="true"] { background: var(--c); color: var(--paper); }
+  #answerInput {
+    flex: 1 1 16rem; min-width: 0; padding: .5em .8em; font-size: 1.4rem; font-weight: 700;
+    border: 3px solid var(--current, var(--ink)); border-radius: .6em; background: var(--paper); outline: none;
+  }
+  .tools { display: flex; gap: .4rem; }
+  .tools button {
+    border: 2px solid var(--ink); background: transparent; padding: .35em .8em;
+    border-radius: .5em; font-weight: 700; cursor: pointer;
+  }
+  .tools button:hover { background: var(--ink); color: var(--bg); }
+  .tools button.armed { background: var(--p1); border-color: var(--p1); color: var(--paper); }
+  .keys { width: 100%; margin: 0; font-size: .85rem; color: var(--muted); }
+  kbd { font-family: inherit; border: 1px solid currentColor; border-radius: .3em; padding: 0 .35em; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .word.new, #announce p { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- お題入力 -->
+<section id="setup" class="screen active" aria-label="お題入力">
+  <h1>お題を入力してください</h1>
+  <input id="themeInput" class="theme-field" type="text" placeholder="例：夏の終わり" autocomplete="off" autofocus>
+  <div class="names" aria-label="回答者の名前（任意）">
+    <label><span class="dot" style="background:var(--p1)"></span><input id="name0" value="回答者1" aria-label="回答者1の名前"></label>
+    <label><span class="dot" style="background:var(--p2)"></span><input id="name1" value="回答者2" aria-label="回答者2の名前"></label>
+    <label><span class="dot" style="background:var(--p3)"></span><input id="name2" value="回答者3" aria-label="回答者3の名前"></label>
+  </div>
+  <p class="hint">お題を入力して <kbd>Enter</kbd> で開始</p>
+</section>
+
+<!-- 開始アナウンス -->
+<section id="announce" class="screen" aria-live="assertive">
+  <p>それでは開始します</p>
+</section>
+
+<!-- 本番ボード -->
+<section id="board" class="screen" aria-label="回答ボード">
+  <header class="theme-band">
+    <span class="tag">お題</span>
+    <span class="theme" id="themeText"></span>
+  </header>
+  <main class="words empty" id="words" aria-live="polite">
+    <span class="placeholder">回答者の発言を入力すると、ここに並びます</span>
+  </main>
+  <footer class="console" id="console">
+    <div class="who-tabs" id="whoTabs" role="group" aria-label="発言者"></div>
+    <input id="answerInput" type="text" placeholder="発言をタイプして Enter" autocomplete="off" aria-label="回答者の発言">
+    <div class="tools">
+      <button id="undoBtn" type="button">1つ戻す</button>
+      <button id="fsBtn" type="button">全画面</button>
+      <button id="resetBtn" type="button">新しいお題</button>
+    </div>
+    <p class="keys"><kbd>Enter</kbd> 追加（発言者は自動で次へ）　<kbd>Tab</kbd> 発言者切替　空欄で <kbd>Backspace</kbd> 1つ戻す　<kbd>Esc</kbd> 入力欄を隠す／出す</p>
+  </footer>
+</section>
+
+<script>
+(() => {
+  const COLORS = ['var(--p1)', 'var(--p2)', 'var(--p3)'];
+  const state = { theme: '', names: [], words: [], current: 0 };
+
+  const $ = id => document.getElementById(id);
+  const screens = ['setup', 'announce', 'board'];
+  const show = id => screens.forEach(s => $(s).classList.toggle('active', s === id));
+
+  const themeInput = $('themeInput');
+  const answerInput = $('answerInput');
+  const wordsEl = $('words');
+  const consoleEl = $('console');
+
+  // IME変換中のEnterを無視するための判定
+  const isComposingEnter = e => e.isComposing || e.keyCode === 229;
+
+  // ---------- お題入力 ----------
+  themeInput.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || isComposingEnter(e)) return;
+    e.preventDefault();
+    start();
+  });
+  [0,1,2].forEach(i => $('name' + i).addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !isComposingEnter(e)) { e.preventDefault(); start(); }
+  }));
+
+  function start() {
+    const theme = themeInput.value.trim();
+    if (!theme) { themeInput.focus(); themeInput.placeholder = 'お題が空です。入力してください'; return; }
+    state.theme = theme;
+    state.names = [0,1,2].map(i => $('name' + i).value.trim() || `回答者${i+1}`);
+    state.words = [];
+    state.current = 0;
+    $('themeText').textContent = theme;
+    buildTabs();
+    render();
+    show('announce');
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(() => { show('board'); fit(); answerInput.focus(); }, reduce ? 900 : 1600);
+  }
+
+  // ---------- 発言者タブ ----------
+  function buildTabs() {
+    const tabs = $('whoTabs');
+    tabs.innerHTML = '';
+    state.names.forEach((n, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = n;
+      b.style.setProperty('--c', COLORS[i]);
+      b.addEventListener('click', () => { setCurrent(i); answerInput.focus(); });
+      tabs.appendChild(b);
+    });
+    setCurrent(0);
+  }
+  function setCurrent(i) {
+    state.current = (i + 3) % 3;
+    [...$('whoTabs').children].forEach((b, j) => b.setAttribute('aria-pressed', j === state.current));
+    answerInput.style.setProperty('--current', COLORS[state.current]);
+    answerInput.placeholder = `${state.names[state.current]} の発言をタイプして Enter`;
+  }
+
+  // ---------- 発言入力 ----------
+  answerInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !isComposingEnter(e)) {
+      e.preventDefault();
+      const text = answerInput.value.trim();
+      if (!text) return;
+      state.words.push({ text, who: state.current });
+      answerInput.value = '';
+      render(true);
+      setCurrent(state.current + 1);
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      setCurrent(state.current + (e.shiftKey ? -1 : 1));
+    } else if (e.key === 'Backspace' && answerInput.value === '' && !isComposingEnter(e)) {
+      e.preventDefault();
+      undo();
+    }
+  });
+
+  function undo() {
+    const last = state.words.pop();
+    if (!last) return;
+    setCurrent(last.who);
+    render();
+    answerInput.focus();
+  }
+
+  // ---------- 描画 ----------
+  function render(animateLast = false) {
+    wordsEl.innerHTML = '';
+    wordsEl.classList.toggle('empty', state.words.length === 0);
+    if (state.words.length === 0) {
+      const p = document.createElement('span');
+      p.className = 'placeholder';
+      p.textContent = '回答者の発言を入力すると、ここに並びます';
+      wordsEl.appendChild(p);
+      return;
+    }
+    const lastIdx = state.words.length - 1;
+    state.words.forEach((w, i) => {
+      const el = document.createElement('div');
+      el.className = 'word' + (i === lastIdx ? ' latest' : '') + (animateLast && i === lastIdx ? ' new' : '');
+      el.style.setProperty('--c', COLORS[w.who]);
+      const num = document.createElement('span');
+      num.className = 'num';
+      num.textContent = i + 1;
+      const body = document.createElement('span');
+      body.className = 'body';
+      const t = document.createElement('span');
+      t.className = 'text';
+      t.textContent = w.text;
+      const who = document.createElement('span');
+      who.className = 'who';
+      who.textContent = state.names[w.who];
+      body.append(t, who);
+      el.append(num, body);
+      wordsEl.appendChild(el);
+    });
+    fit();
+  }
+
+  // 単語が増えても画面に収まるよう文字サイズを自動調整
+  function fit() {
+    if (!$('board').classList.contains('active') || state.words.length === 0) return;
+    const maxSize = Math.min(window.innerHeight * 0.14, window.innerWidth * 0.09, 150);
+    const cells = [...wordsEl.children];
+    const fits = () =>
+      wordsEl.scrollHeight <= wordsEl.clientHeight + 1 &&
+      cells.every(c => c.scrollWidth <= c.clientWidth + 1);
+
+    // 1列6個。最初の3列（18個）までは列幅を固定して、表示位置が動かないようにする
+    const PER_COL = 6;
+    const cols = Math.max(3, Math.ceil(state.words.length / PER_COL));
+    wordsEl.style.setProperty('--cols', cols);
+    let lo = 10, hi = maxSize;
+    for (let k = 0; k < 14; k++) {
+      const mid = (lo + hi) / 2;
+      wordsEl.style.fontSize = mid + 'px';
+      if (fits()) lo = mid; else hi = mid;
+    }
+    wordsEl.style.fontSize = lo + 'px';
+  }
+  window.addEventListener('resize', fit);
+
+  // ---------- ツール ----------
+  $('undoBtn').addEventListener('click', undo);
+  $('fsBtn').addEventListener('click', () => {
+    const d = document;
+    if (!d.fullscreenElement) d.documentElement.requestFullscreen?.().catch(() => {});
+    else d.exitFullscreen?.();
+    answerInput.focus();
+  });
+  document.addEventListener('fullscreenchange', () => {
+    $('fsBtn').textContent = document.fullscreenElement ? '全画面を終了' : '全画面';
+    setTimeout(fit, 60);
+  });
+  // 公開ページでは confirm() のダイアログが表示できないため、2回押しで確定する方式にする
+  const resetBtn = $('resetBtn');
+  let resetArmed = null;
+  function disarmReset() {
+    clearTimeout(resetArmed);
+    resetArmed = null;
+    resetBtn.textContent = '新しいお題';
+    resetBtn.classList.remove('armed');
+  }
+  resetBtn.addEventListener('click', () => {
+    if (state.words.length && !resetArmed) {
+      resetBtn.textContent = 'もう一度押すと回答を消去';
+      resetBtn.classList.add('armed');
+      resetArmed = setTimeout(disarmReset, 3000);
+      return;
+    }
+    disarmReset();
+    state.words = [];
+    render();
+    consoleEl.classList.remove('hidden');
+    themeInput.value = '';
+    themeInput.placeholder = '例：夏の終わり';
+    show('setup');
+    themeInput.focus();
+  });
+
+  // Escで入力バーを隠して表示だけにする
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !$('board').classList.contains('active')) return;
+    consoleEl.classList.toggle('hidden');
+    requestAnimationFrame(fit);
+    if (consoleEl.classList.contains('hidden')) answerInput.blur(); else answerInput.focus();
+  });
+  // 入力バーを隠していても、文字キーを押したら再表示して入力できるように
+  document.addEventListener('keydown', e => {
+    if (!$('board').classList.contains('active') || !consoleEl.classList.contains('hidden')) return;
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      consoleEl.classList.remove('hidden');
+      requestAnimationFrame(fit);
+      answerInput.focus();
+    }
+  });
+})();
+</script>
+</body>
+</html>
