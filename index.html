@@ -335,26 +335,26 @@
 <!-- お題入力 -->
 <section id="entry" class="screen active" aria-label="参加者エントリー">
   <button id="fsBtnSetup" class="ghost setup-fs fs-toggle" type="button">全画面</button>
-  <h1 id="entryHeading">1人目の名前を入力してください</h1>
-  <input id="nameInput" class="theme-field" type="text" placeholder="参加者の名前" autocomplete="off" aria-label="参加者の名前">
+  <h1 id="entryHeading" hidden>最初の挑戦者は？</h1>
+  <input id="nameInput" class="theme-field" type="text" placeholder="1人目の挑戦者" autocomplete="off" aria-label="参加者の名前">
   <p id="entryError" class="hint" role="status"></p>
-  <p class="hint">Enter で確定して、次の参加者を入力（最大6名）</p>
+  <p class="hint">Enterでエントリー　最大6名</p>
   <p id="entryCount" class="hint"></p>
   <ol class="names" id="names" aria-label="登録済みの参加者" aria-live="polite"></ol>
   <div class="setup-actions">
-    <button id="entryBtn" class="primary" type="button" hidden>お題の入力へ</button>
-    <button id="undoEntryBtn" class="ghost" type="button">1つ戻す</button>
+    <button id="entryBtn" class="primary" type="button" hidden>お題へ</button>
+    <button id="undoEntryBtn" class="ghost" type="button">一つ戻す</button>
   </div>
 </section>
 <section id="setup" class="screen" aria-label="お題入力">
   <button class="ghost setup-fs fs-toggle" type="button">全画面</button>
-  <h1>お題を入力してください</h1>
-  <input id="themeInput" class="theme-field" type="text" placeholder="例：夏の終わり" autocomplete="off" aria-label="お題">
+  <h1 hidden>今回のお題は？</h1>
+  <input id="themeInput" class="theme-field" type="text" placeholder="お題" autocomplete="off" aria-label="お題">
   <ol id="setupNames" class="participant-list" aria-label="参加者"></ol>
   <div class="setup-actions">
-    <button id="startBtn" class="primary" type="button">開始する</button>
-    <button id="editEntryBtn" class="ghost" type="button">参加者を編集</button>
-    <p class="hint">お題の入力後に <kbd>Enter</kbd> でも開始できます</p>
+    <button id="startBtn" class="primary" type="button">ゲーム開始</button>
+    <button id="editEntryBtn" class="ghost" type="button">参戦者を替える</button>
+    <p class="hint"><kbd>Enter</kbd> でゲーム開始</p>
   </div>
 </section>
 
@@ -383,9 +383,9 @@
     <div class="who-tabs" id="whoTabs" role="group" aria-label="発言者"></div>
     <input id="answerInput" type="text" placeholder="発言をタイプして Enter" autocomplete="off" aria-label="回答者の発言">
     <div class="tools">
-      <button id="undoBtn" class="ghost" type="button">1つ戻す</button>
+      <button id="undoBtn" class="ghost" type="button">一つ戻す</button>
       <button id="fsBtn" class="ghost fs-toggle" type="button">全画面</button>
-      <button id="resetBtn" class="ghost" type="button">新しいお題</button>
+      <button id="resetBtn" class="ghost" type="button">次のお題</button>
     </div>
     <p class="keys"><kbd>Enter</kbd> 追加（発言者は自動で次へ）　<kbd>Tab</kbd> 発言者切替　空欄で <kbd>Backspace</kbd> 1つ戻す　<kbd>Esc</kbd> ドックを隠す／出す</p>
   </footer>
@@ -568,9 +568,10 @@
   }
   function renderEntries() {
     renderParticipantList(namesEl, nameDrafts);
-    $('entryCount').textContent = `${nameDrafts.length}名がエントリー済み ／ 最大6名`;
+    $('entryCount').textContent = `参戦者 ${nameDrafts.length}名 ／ 最大6名`;
     nameInput.disabled = nameDrafts.length >= MAX_PLAYERS;
-    $('entryHeading').textContent = nameInput.disabled ? '参加者が6名になりました' : `${nameDrafts.length + 1}人目の名前を入力してください`;
+    $('entryHeading').textContent = nameInput.disabled ? '参戦者は6名。準備OK' : `${nameDrafts.length + 1}人目の挑戦者は？`;
+    nameInput.placeholder = nameInput.disabled ? '参戦者は6名' : `${nameDrafts.length + 1}人目の挑戦者`;
     $('entryBtn').hidden = nameDrafts.length < MIN_PLAYERS;
     $('undoEntryBtn').disabled = !nameDrafts.length;
   }
@@ -582,7 +583,7 @@
   }
   function addEntry() {
     const name = nameInput.value.trim();
-    if (!name) { $('entryError').textContent = '名前を入力してください'; nameInput.focus(); return; }
+    if (!name) { $('entryError').textContent = '名前を入れてね'; nameInput.focus(); return; }
     if (nameDrafts.length >= MAX_PLAYERS) return;
     nameDrafts.push(name);
     nameInput.value = '';
@@ -600,7 +601,7 @@
   nameInput.focus();
   function completeEntry() {
     if (nameDrafts.length < MIN_PLAYERS) return;
-    if (nameInput.value.trim()) { $('entryError').textContent = '入力中の名前を Enter で確定してください'; nameInput.focus(); return; }
+    if (nameInput.value.trim()) { $('entryError').textContent = 'Enterでエントリーしてね'; nameInput.focus(); return; }
     if (!nameDrafts.length) return;
     state.names = [...nameDrafts];
     renderParticipantList(setupNamesEl, state.names);
@@ -612,7 +613,7 @@
 
   function start() {
     const theme = themeInput.value.trim();
-    if (!theme) { themeInput.focus(); themeInput.placeholder = 'お題が空です。入力してください'; return; }
+    if (!theme) { themeInput.focus(); themeInput.placeholder = 'お題を決めてね'; return; }
     state.theme = theme;
     state.names = [...nameDrafts];
     state.words = [];
@@ -924,7 +925,7 @@
   function disarmReset() {
     clearTimeout(resetArmed);
     resetArmed = null;
-    resetBtn.textContent = '新しいお題';
+    resetBtn.textContent = '次のお題';
     resetBtn.classList.remove('armed');
   }
   resetBtn.addEventListener('click', () => {
