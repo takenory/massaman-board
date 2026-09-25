@@ -28,6 +28,20 @@
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+  body.light {
+    --night: #F8F7F3;
+    --horizon: #E7DDC9;
+    --bone: #27231D;
+    --muted: rgba(39, 35, 29, .62);
+    --faint: rgba(39, 35, 29, .2);
+    --line: rgba(39, 35, 29, .18);
+    --card: rgba(39, 35, 29, .06);
+    --on-color: #FFFDF8;
+    color-scheme: light;
+    background:
+      radial-gradient(90% 45% at 50% 108%, rgba(201, 165, 106, .18) 0%, transparent 70%),
+      linear-gradient(180deg, #FFFFFF 0%, #F8F7F3 70%, var(--horizon) 100%);
+  }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
@@ -55,6 +69,21 @@
     content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50; opacity: .07;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   }
+  body.light::after { opacity: .025; }
+  body.light::before {
+    background-image:
+      linear-gradient(rgba(39, 35, 29, .06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(39, 35, 29, .06) 1px, transparent 1px);
+  }
+  body.light .ghost { background: rgba(255,255,255,.72); color: var(--bone); }
+  body.light .ghost:hover { background: rgba(39,35,29,.08); border-color: rgba(39,35,29,.36); }
+  body.light .theme-field::placeholder { color: rgba(39,35,29,.34); }
+  body.light .stepper button:hover:not(:disabled), body.light .name-chip:focus-within { background: rgba(39,35,29,.09); }
+  body.light .word { background: linear-gradient(90deg, rgba(39,35,29,.09), rgba(39,35,29,.035)); }
+  body.light .word.latest { background: color-mix(in srgb, var(--c) 20%, rgba(255,255,255,.78)); }
+  body.light .dock { background: rgba(255,255,255,.84); border-color: rgba(39,35,29,.2); box-shadow: 0 1rem 3rem rgba(39,35,29,.16); }
+  body.light #answerInput { background: rgba(255,255,255,.74); }
+  body.light #answerInput::placeholder { color: rgba(39,35,29,.46); }
   button, input, output { font: inherit; color: inherit; }
   :focus-visible { outline: 2px solid var(--sand); outline-offset: 3px; }
   kbd {
@@ -136,6 +165,8 @@
   .setup-actions { display: flex; flex-direction: column; align-items: center; gap: .8rem; }
   .hint { margin: 0; color: var(--muted); font-size: .9rem; }
   .setup-fs { position: absolute; top: 1.2rem; right: 1.2rem; }
+  .mode-toggle { position: absolute; top: 1.2rem; left: 1.2rem; width: 2.7rem; height: 2.3rem; padding: 0; font-size: 1.25rem; line-height: 1; }
+  .dock .mode-toggle { position: static; }
 
   /* ============ 開始アナウンス（A-1, E-5） ============ */
   #announce { align-items: center; justify-content: center; padding: 0 4vw; }
@@ -292,6 +323,7 @@
   .event-overlay h2 { margin: 0; color: var(--sand); font-size: clamp(1.5rem, 4vw, 3rem); }
   .event-overlay p { margin: 0; max-width: 100%; overflow-wrap: anywhere; font-family: var(--mincho); font-size: clamp(2rem, 9vw, 7rem); }
   #winnerEvent { overflow: hidden; isolation: isolate; background: radial-gradient(circle at 50% 48%, rgba(201,165,106,.18), transparent 42%), rgba(16,13,10,.94); }
+  body.light #winnerEvent { background: radial-gradient(circle at 50% 48%, rgba(201,165,106,.22), transparent 42%), rgba(248,247,243,.96); }
   #winnerEvent::before { content: ""; position: absolute; inset: 8%; border: 1px solid rgba(201,165,106,.25); background: repeating-linear-gradient(0deg, transparent 0 18px, rgba(237,227,207,.035) 19px 20px); opacity: .55; pointer-events: none; z-index: -1; }
   #winnerEvent::after { content: "勝者確定"; position: absolute; top: 16%; right: 10%; color: var(--signal); border: .12em solid var(--signal); padding: .25em .45em; font-family: var(--mincho); font-weight: 900; letter-spacing: .15em; transform: rotate(-8deg) scale(0); opacity: 0; pointer-events: none; }
   #winnerEvent.winner-reveal::after { animation: winner-stamp .55s .35s cubic-bezier(.3,1.6,.5,1) forwards; }
@@ -335,6 +367,7 @@
 <!-- お題入力 -->
 <section id="entry" class="screen active" aria-label="参加者エントリー">
   <button id="fsBtnSetup" class="ghost setup-fs fs-toggle" type="button">全画面</button>
+  <button class="ghost mode-toggle" type="button" aria-label="ライトモードへ切替" title="ライトモードへ切替">☼</button>
   <h1 id="entryHeading" hidden>最初の挑戦者は？</h1>
   <input id="nameInput" class="theme-field" type="text" placeholder="1人目の挑戦者" autocomplete="off" aria-label="参加者の名前">
   <p id="entryError" class="hint" role="status"></p>
@@ -346,6 +379,7 @@
 </section>
 <section id="setup" class="screen" aria-label="お題入力">
   <button class="ghost setup-fs fs-toggle" type="button">全画面</button>
+  <button class="ghost mode-toggle" type="button" aria-label="ライトモードへ切替" title="ライトモードへ切替">☼</button>
   <h1 hidden>今回のお題は？</h1>
   <input id="themeInput" class="theme-field" type="text" placeholder="お題" autocomplete="off" aria-label="お題">
   <ol id="setupNames" class="participant-list" aria-label="参加者"></ol>
@@ -383,6 +417,7 @@
     <div class="tools">
       <button id="undoBtn" class="ghost" type="button">一つ戻す</button>
       <button id="fsBtn" class="ghost fs-toggle" type="button">全画面</button>
+      <button class="ghost mode-toggle" type="button" aria-label="ライトモードへ切替" title="ライトモードへ切替">☼</button>
       <button id="resetBtn" class="ghost" type="button">次のお題</button>
     </div>
     <p class="keys"><kbd>Enter</kbd> 追加（発言者は自動で次へ）　<kbd>Tab</kbd> 発言者切替　空欄で <kbd>Backspace</kbd> 1つ戻す　<kbd>Esc</kbd> ドックを隠す／出す</p>
@@ -941,6 +976,23 @@
     fsButtons.forEach(btn => { btn.textContent = label; });
     setTimeout(fit, 60);
   });
+
+  // 表示モード切替（夜の会場／屋外の明るい環境）
+  const modeButtons = document.querySelectorAll('.mode-toggle');
+  function updateModeLabels() {
+    const light = document.body.classList.contains('light');
+    const icon = light ? '☾' : '☼';
+    const label = light ? 'ダークモードへ切替' : 'ライトモードへ切替';
+    modeButtons.forEach(btn => { btn.textContent = icon; btn.setAttribute('aria-label', label); btn.title = label; });
+  }
+  modeButtons.forEach(btn => btn.addEventListener('click', () => {
+    document.body.classList.toggle('light');
+    updateModeLabels();
+    requestAnimationFrame(fit);
+    if (echoEl.classList.contains('show')) fitEcho();
+    ($('entry').classList.contains('active') ? (nameInput.disabled ? $('entryBtn') : nameInput) : $('setup').classList.contains('active') ? themeInput : answerInput).focus();
+  }));
+  updateModeLabels();
 
   // 新しいお題（R-1〜R-5）。confirm() は埋め込み環境で動かないため2回押しで確定する
   const resetBtn = $('resetBtn');
