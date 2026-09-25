@@ -338,8 +338,6 @@
   <h1 id="entryHeading" hidden>最初の挑戦者は？</h1>
   <input id="nameInput" class="theme-field" type="text" placeholder="1人目の挑戦者" autocomplete="off" aria-label="参加者の名前">
   <p id="entryError" class="hint" role="status"></p>
-  <p class="hint">Enterでエントリー　最大6名</p>
-  <p id="entryCount" class="hint"></p>
   <ol class="names" id="names" aria-label="登録済みの参加者" aria-live="polite"></ol>
   <div class="setup-actions">
     <button id="entryBtn" class="primary" type="button" hidden>お題へ</button>
@@ -377,7 +375,7 @@
     </div>
   </header>
   <main class="words empty" id="words" aria-live="polite">
-    <span class="placeholder">回答者の発言を入力すると、ここに並びます</span>
+    <span class="placeholder">発言した順に回答を並べます</span>
   </main>
   <footer class="dock" id="dock">
     <div class="who-tabs" id="whoTabs" role="group" aria-label="発言者"></div>
@@ -568,7 +566,6 @@
   }
   function renderEntries() {
     renderParticipantList(namesEl, nameDrafts);
-    $('entryCount').textContent = `参戦者 ${nameDrafts.length}名 ／ 最大6名`;
     nameInput.disabled = nameDrafts.length >= MAX_PLAYERS;
     $('entryHeading').textContent = nameInput.disabled ? '参戦者は6名。準備OK' : `${nameDrafts.length + 1}人目の挑戦者は？`;
     nameInput.placeholder = nameInput.disabled ? '参戦者は6名' : `${nameDrafts.length + 1}人目の挑戦者`;
@@ -587,6 +584,7 @@
     if (nameDrafts.length >= MAX_PLAYERS) return;
     nameDrafts.push(name);
     nameInput.value = '';
+    hideEcho();
     openEntry();
   }
   nameInput.addEventListener('keydown', e => {
@@ -615,6 +613,7 @@
     const theme = themeInput.value.trim();
     if (!theme) { themeInput.focus(); themeInput.placeholder = 'お題を決めてね'; return; }
     state.theme = theme;
+    hideEcho();
     state.names = [...nameDrafts];
     state.words = [];
     state.eliminated.clear();
@@ -733,6 +732,7 @@
 
   // ============ エコー（E-1〜E-3） ============
   let echoPrev = [];
+  let stageEchoPrev = [];
   function updateEcho() {
     clearDuplicate();
     const chars = [...answerInput.value];
@@ -766,8 +766,31 @@
     boardEl.classList.remove('typing');
     echoText.innerHTML = '';
     echoPrev = [];
+    stageEchoPrev = [];
   }
   answerInput.addEventListener('input', updateEcho);
+
+  // エントリー名・お題も、発言と同じ解読エコーで受け付ける
+  function updateStageEcho(input, label, color) {
+    const chars = [...input.value];
+    if (!input.value.trim()) { hideEcho(); stageEchoPrev = []; return; }
+    echoEl.style.setProperty('--c', color);
+    echoWho.textContent = label;
+    echoEl.classList.add('show');
+    let p = 0;
+    while (p < chars.length && p < stageEchoPrev.length && chars[p] === stageEchoPrev[p]) p++;
+    while (echoText.childNodes.length > p) echoText.lastChild.remove();
+    for (let i = p; i < chars.length; i++) {
+      const s = document.createElement('span');
+      s.className = 'ch';
+      echoText.appendChild(s);
+      decode(s, chars[i]);
+    }
+    stageEchoPrev = chars;
+    fitEcho();
+  }
+  nameInput.addEventListener('input', () => updateStageEcho(nameInput, 'エントリー', COLORS[nameDrafts.length % COLORS.length]));
+  themeInput.addEventListener('input', () => updateStageEcho(themeInput, 'お題', SAND));
 
   // ============ 発言の入力（F-1〜F-7） ============
   answerInput.addEventListener('keydown', e => {
@@ -849,7 +872,7 @@
     if (state.words.length === 0) {
       const p = document.createElement('span');
       p.className = 'placeholder';
-      p.textContent = '回答者の発言を入力すると、ここに並びます';
+      p.textContent = '発言した順に回答を並べます';
       wordsEl.appendChild(p);
       return;
     }
