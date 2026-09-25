@@ -61,6 +61,12 @@
     background: var(--paper); font-weight: 700;
   }
   .hint { color: var(--muted); font-size: 1rem; margin: 0; text-align: center; }
+  .setup-fs {
+    position: absolute; top: 1.2rem; right: 1.2rem;
+    border: 2px solid var(--ink); background: transparent; padding: .35em .9em;
+    border-radius: .5em; font-weight: 700; cursor: pointer;
+  }
+  .setup-fs:hover { background: var(--ink); color: var(--bg); }
 
   /* ---------- 開始アナウンス ---------- */
   #announce { align-items: center; justify-content: center; background: var(--ink); color: var(--bg); }
@@ -150,6 +156,7 @@
 
 <!-- お題入力 -->
 <section id="setup" class="screen active" aria-label="お題入力">
+  <button id="fsBtnSetup" class="setup-fs fs-toggle" type="button">全画面</button>
   <h1>お題を入力してください</h1>
   <input id="themeInput" class="theme-field" type="text" placeholder="例：夏の終わり" autocomplete="off" autofocus>
   <div class="names" aria-label="回答者の名前（任意）">
@@ -179,7 +186,7 @@
     <input id="answerInput" type="text" placeholder="発言をタイプして Enter" autocomplete="off" aria-label="回答者の発言">
     <div class="tools">
       <button id="undoBtn" type="button">1つ戻す</button>
-      <button id="fsBtn" type="button">全画面</button>
+      <button id="fsBtn" class="fs-toggle" type="button">全画面</button>
       <button id="resetBtn" type="button">新しいお題</button>
     </div>
     <p class="keys"><kbd>Enter</kbd> 追加（発言者は自動で次へ）　<kbd>Tab</kbd> 発言者切替　空欄で <kbd>Backspace</kbd> 1つ戻す　<kbd>Esc</kbd> 入力欄を隠す／出す</p>
@@ -335,14 +342,17 @@
 
   // ---------- ツール ----------
   $('undoBtn').addEventListener('click', undo);
-  $('fsBtn').addEventListener('click', () => {
+  // 全画面の切替（お題入力画面・本番画面のどちらのボタンからでも）
+  const fsButtons = document.querySelectorAll('.fs-toggle');
+  fsButtons.forEach(btn => btn.addEventListener('click', () => {
     const d = document;
     if (!d.fullscreenElement) d.documentElement.requestFullscreen?.().catch(() => {});
     else d.exitFullscreen?.();
-    answerInput.focus();
-  });
+    ($('setup').classList.contains('active') ? themeInput : answerInput).focus();
+  }));
   document.addEventListener('fullscreenchange', () => {
-    $('fsBtn').textContent = document.fullscreenElement ? '全画面を終了' : '全画面';
+    const label = document.fullscreenElement ? '全画面を終了' : '全画面';
+    fsButtons.forEach(btn => { btn.textContent = label; });
     setTimeout(fit, 60);
   });
   // 公開ページでは confirm() のダイアログが表示できないため、2回押しで確定する方式にする
