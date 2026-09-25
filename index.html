@@ -6,97 +6,146 @@
 <title>マッサマンゲーム 表示ボード</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
+  /* ============ デザイントークン（spec.md 6章） ============ */
   :root {
-    --bg: #F2B63C;        /* ターメリック */
-    --ink: #3A1F10;       /* ローストしたカレー色 */
-    --paper: #FFF6E2;     /* ココナッツミルク */
-    --p1: #C8321F;        /* 唐辛子 */
-    --p2: #2F7A3E;        /* バジル */
-    --p3: #2B4F9E;        /* 藍 */
-    --p4: #7B3F9E;        /* 紫玉ねぎ */
-    --p5: #0E7C7B;        /* ミント */
-    --p6: #B0306A;        /* ビーツ */
-    --muted: rgba(58,31,16,.55);
+    --stage: #170D07;       /* 舞台の暗がり */
+    --stage-lit: #4A2A14;   /* スポットライトの中心 */
+    --ink: #FFF3DC;         /* 文字（クリーム） */
+    --muted: rgba(255, 243, 220, .58);
+    --line: rgba(255, 243, 220, .14);
+    --card: rgba(255, 243, 220, .055);
+    --gold: #F4B63F;        /* ターメリック */
+    --on-color: #1A0E07;    /* 色面の上の文字 */
+    --display: "Dela Gothic One", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    --ui: "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+    color-scheme: dark;
     box-sizing: border-box;
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #2A1A0E; --ink: #FFE9BF; --paper: #3B2614;
-      --p1: #FF6B52; --p2: #6CCB7E; --p3: #7FA2F2; --muted: rgba(255,233,191,.55);
-      --p4: #C08CF0; --p5: #4FD1C5; --p6: #F07AB0;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #2A1A0E; --ink: #FFE9BF; --paper: #3B2614;
-    --p1: #FF6B52; --p2: #6CCB7E; --p3: #7FA2F2; --muted: rgba(255,233,191,.55);
-    --p4: #C08CF0; --p5: #4FD1C5; --p6: #F07AB0;
-  }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
-    background: var(--bg); color: var(--ink);
-    font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Meiryo", sans-serif;
+    background:
+      radial-gradient(120% 85% at 50% -12%, var(--stage-lit) 0%, #2A170B 40%, var(--stage) 78%) fixed,
+      var(--stage);
+    color: var(--ink);
+    font-family: var(--ui);
     overflow: hidden;
+    -webkit-font-smoothing: antialiased;
   }
-  button, input { font: inherit; color: inherit; }
-  :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  button, input, output { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+  kbd {
+    font-family: var(--ui); font-size: .9em;
+    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: .35em; padding: .05em .4em;
+  }
 
-  /* ---------- 画面切替 ---------- */
   .screen { position: absolute; inset: 0; display: none; }
   .screen.active { display: flex; }
 
-  /* ---------- お題入力 ---------- */
-  #setup { flex-direction: column; align-items: center; justify-content: center; gap: 2.5rem; padding: 2rem; }
-  #setup h1 { margin: 0; font-weight: 900; font-size: clamp(2rem, 6vw, 4.5rem); letter-spacing: .04em; }
+  /* 共通ボタン */
+  .ghost {
+    border: 1px solid var(--line); background: transparent; color: var(--ink);
+    border-radius: 999px; padding: .45em 1.1em; font-weight: 700; cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .ghost:hover { background: rgba(255, 243, 220, .1); border-color: rgba(255, 243, 220, .3); }
+  .ghost.armed { background: #FF5A3C; border-color: #FF5A3C; color: var(--on-color); }
+  .primary {
+    border: none; background: var(--gold); color: var(--on-color);
+    border-radius: 999px; padding: .8em 2.6em; font-weight: 900; font-size: 1.15rem; cursor: pointer;
+    box-shadow: 0 .6rem 2.2rem rgba(244, 182, 63, .32);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .primary:hover { transform: translateY(-2px); box-shadow: 0 .9rem 2.6rem rgba(244, 182, 63, .42); }
+
+  /* ============ お題入力画面 ============ */
+  #setup {
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: clamp(1.4rem, 4vh, 2.6rem); padding: 2rem 6vw; text-align: center;
+  }
+  #setup h1 {
+    margin: 0; font-family: var(--display); font-weight: 400;
+    font-size: clamp(1.8rem, 4.4vw, 3.4rem); letter-spacing: .02em;
+  }
   .theme-field {
-    width: min(900px, 100%); border: none; border-bottom: 6px solid var(--ink);
-    background: transparent; font-size: clamp(2rem, 6vw, 4.5rem); font-weight: 700;
-    text-align: center; padding: .3em 0; outline: none;
+    width: min(1000px, 100%); border: none; border-bottom: 4px solid var(--gold);
+    background: transparent; color: var(--ink); caret-color: var(--gold);
+    font-family: var(--display); font-size: clamp(2.2rem, 6vw, 5rem);
+    text-align: center; padding: .15em 0 .25em; outline: none;
+    transition: border-color .2s;
   }
-  .theme-field::placeholder { color: var(--muted); }
-  .names { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
-  .names label { display: flex; align-items: center; gap: .5rem; font-weight: 700; }
-  .names .dot { width: 1rem; height: 1rem; border-radius: 50%; }
-  .names input {
-    width: 9em; padding: .4em .6em; border: 2px solid var(--ink); border-radius: .5em;
-    background: var(--paper); font-weight: 700;
+  .theme-field::placeholder { color: rgba(255, 243, 220, .2); }
+  .theme-field:focus-visible { border-bottom-color: #FFD27A; }
+  .players { display: flex; flex-direction: column; align-items: center; gap: .9rem; }
+  .count-row { display: flex; align-items: center; gap: .9rem; font-weight: 700; color: var(--muted); }
+  .stepper {
+    display: flex; align-items: center; gap: .15rem; padding: .2rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 999px; color: var(--ink);
   }
-  .hint { color: var(--muted); font-size: 1rem; margin: 0; text-align: center; }
-  .count-row { display: flex; align-items: center; gap: 1rem; font-weight: 700; font-size: 1.2rem; }
-  .stepper { display: flex; align-items: center; border: 2px solid var(--ink); border-radius: .6em; overflow: hidden; }
   .stepper button {
-    width: 2.2em; height: 2.2em; border: none; background: transparent; font-weight: 900; font-size: 1.1em; cursor: pointer;
+    width: 2.3rem; height: 2.3rem; border: none; border-radius: 50%;
+    background: transparent; font-size: 1.25rem; font-weight: 700; cursor: pointer;
   }
-  .stepper button:hover:not(:disabled) { background: var(--ink); color: var(--bg); }
-  .stepper button:disabled { opacity: .3; cursor: default; }
-  .stepper output { min-width: 2.4em; text-align: center; font-weight: 900; font-size: 1.2em; font-variant-numeric: tabular-nums; }
-  .setup-fs {
-    position: absolute; top: 1.2rem; right: 1.2rem;
-    border: 2px solid var(--ink); background: transparent; padding: .35em .9em;
-    border-radius: .5em; font-weight: 700; cursor: pointer;
+  .stepper button:hover:not(:disabled) { background: rgba(255, 243, 220, .12); }
+  .stepper button:disabled { opacity: .25; cursor: default; }
+  .stepper output { min-width: 3.4em; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .names { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; max-width: 1000px; }
+  .name-chip {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .3rem .5rem .3rem .85rem; border-radius: 999px;
+    background: var(--card);
+    border: 1px solid var(--c);
+    border-color: color-mix(in srgb, var(--c) 45%, transparent);
+    transition: border-color .15s, background .15s;
   }
-  .setup-fs:hover { background: var(--ink); color: var(--bg); }
+  .name-chip:focus-within { border-color: var(--c); background: rgba(255, 243, 220, .09); }
+  .name-chip .dot { width: .65rem; height: .65rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 .7rem var(--c); }
+  .name-chip input {
+    width: 7.5em; padding: .25rem; border: none; background: transparent;
+    font-weight: 700; font-size: 1rem; outline: none;
+  }
+  .setup-actions { display: flex; flex-direction: column; align-items: center; gap: .8rem; }
+  .hint { margin: 0; color: var(--muted); font-size: .92rem; }
+  .setup-fs { position: absolute; top: 1.2rem; right: 1.2rem; }
 
-  /* ---------- 開始アナウンス ---------- */
-  #announce { align-items: center; justify-content: center; background: var(--ink); color: var(--bg); }
-  #announce p { margin: 0; font-weight: 900; font-size: clamp(2.5rem, 9vw, 7rem); animation: stamp .6s cubic-bezier(.2,1.6,.4,1) both; }
-  @keyframes stamp { from { transform: scale(2.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  /* ============ 開始アナウンス ============ */
+  #announce { align-items: center; justify-content: center; padding: 0 4vw; }
+  #announceText {
+    margin: 0; font-family: var(--display); font-weight: 400;
+    font-size: clamp(2.4rem, 8vw, 7.5rem); letter-spacing: .02em; text-align: center;
+    text-shadow: 0 0 .4em rgba(244, 182, 63, .35);
+  }
+  .ach { display: inline-block; animation: rise .7s cubic-bezier(.2, 1.4, .3, 1) both; animation-delay: calc(var(--i) * 55ms); }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(.6em) scale(.6); filter: blur(8px); }
+    to   { opacity: 1; transform: none; filter: none; }
+  }
 
-  /* ---------- 本番ボード ---------- */
+  /* ============ 本番画面 ============ */
   #board { flex-direction: column; }
   .theme-band {
-    background: var(--ink); color: var(--bg);
-    padding: clamp(.8rem, 2.5vh, 2rem) 4vw;
-    display: flex; align-items: baseline; gap: 1.5vw;
+    display: flex; align-items: baseline; gap: clamp(.8rem, 1.6vw, 1.6rem);
+    padding: clamp(1rem, 3.2vh, 2.4rem) 4vw clamp(.7rem, 2vh, 1.4rem);
+    border-bottom: 1px solid var(--line);
   }
-  .theme-band .tag { font-weight: 700; font-size: clamp(1rem, 2.4vw, 2rem); opacity: .75; white-space: nowrap; }
-  .theme-band .theme { font-weight: 900; font-size: clamp(2rem, 7vw, 6.5rem); line-height: 1.1; word-break: break-word; }
+  .theme-band .tag {
+    flex: none; transform: translateY(-.35em);
+    padding: .15em .85em; border-radius: 999px;
+    background: var(--gold); color: var(--on-color);
+    font-weight: 900; font-size: clamp(.85rem, 1.5vw, 1.25rem);
+  }
+  .theme-band .theme {
+    font-family: var(--display); font-size: clamp(2rem, 6.4vw, 6rem); line-height: 1.1;
+    color: var(--gold); text-shadow: 0 0 .5em rgba(244, 182, 63, .3); word-break: break-word;
+  }
+  .theme-band .theme.reveal { animation: wipe .9s cubic-bezier(.7, 0, .2, 1) both; }
+  @keyframes wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 
-  /* 上→下に（回答者数×2）個ずつ、埋まったら右の列へ */
+  /* 上→下に（回答者数×2）個ずつ、埋まったら右の列へ（D-2〜D-4） */
   .words {
     flex: 1; min-height: 0; overflow: hidden;
     padding: 3vh 4vw;
@@ -104,64 +153,112 @@
     grid-template-rows: repeat(var(--rows, 6), auto);
     grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
     grid-auto-flow: column;
-    align-content: start; gap: .3em .5em;
+    align-content: start; gap: .28em .5em;
     font-size: 64px; /* JSで自動調整 */
+    transition: opacity .25s, filter .25s;
   }
+  #board.typing .words { opacity: .2; filter: blur(3px); }
   .words.empty { display: flex; align-items: center; justify-content: center; }
-  .words .placeholder { font-size: clamp(1.2rem, 3vw, 2rem); color: var(--muted); font-weight: 700; }
+  .words .placeholder { font-size: clamp(1.1rem, 2.6vw, 1.8rem); color: var(--muted); font-weight: 700; }
   .word {
-    position: relative; display: flex; align-items: center; gap: .3em;
-    min-width: 0; background: var(--paper); border-radius: .35em;
-    padding: .1em .4em .1em .15em; font-weight: 900; line-height: 1.25;
-    border: .06em solid var(--c);
+    position: relative; display: flex; align-items: center; gap: .35em; min-width: 0;
+    padding: .14em .45em .14em .16em; border-radius: .3em;
+    background: var(--card);
+    border: .04em solid var(--c);
+    border-color: color-mix(in srgb, var(--c) 45%, transparent);
+    transform-origin: 0 0;
   }
   .word .num {
-    flex: none; min-width: 1.5em; height: 1.5em; padding: 0 .2em; border-radius: .3em;
+    flex: none; min-width: 1.6em; height: 1.6em; padding: 0 .25em; border-radius: .8em;
     display: grid; place-items: center;
-    background: var(--c); color: var(--paper);
-    font-size: .5em; font-weight: 900; font-variant-numeric: tabular-nums;
+    background: var(--c); color: var(--on-color);
+    font-size: .46em; font-weight: 900; font-variant-numeric: tabular-nums;
   }
   .word .body { display: flex; flex-direction: column; min-width: 0; }
-  .word .text { white-space: nowrap; }
+  .word .text { font-family: var(--display); white-space: nowrap; line-height: 1.2; }
   .word .who {
-    font-size: .28em; font-weight: 700; color: var(--c); line-height: 1.2;
+    font-size: .26em; font-weight: 700; color: var(--c); line-height: 1.25; letter-spacing: .04em;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  /* 直前の発言を目立たせる */
-  .word.latest { background: var(--c); color: var(--paper); }
-  .word.latest .num { background: var(--paper); color: var(--c); }
-  .word.latest .who { color: var(--paper); }
-  .word.new { animation: pop .38s cubic-bezier(.2,1.5,.45,1) both; }
-  @keyframes pop { from { transform: scale(.4) translateY(.4em); opacity: 0; } to { transform: none; opacity: 1; } }
+  .word.latest {
+    background: color-mix(in srgb, var(--c) 22%, transparent);
+    border-color: var(--c);
+    box-shadow: 0 0 .55em color-mix(in srgb, var(--c) 50%, transparent);
+  }
+  .word.flying { z-index: 20; }
+  .word.new { animation: pop .45s cubic-bezier(.2, 1.5, .45, 1) both; }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+  .word.landed::after {
+    content: ""; position: absolute; inset: -.08em; border-radius: .38em;
+    border: .06em solid var(--c); pointer-events: none;
+    animation: ripple .7s ease-out forwards;
+  }
+  @keyframes ripple { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.3, 1.6); } }
 
-  /* ---------- 入力バー ---------- */
-  .console {
-    display: flex; gap: .8rem; align-items: center; flex-wrap: wrap;
-    padding: .8rem 4vw; border-top: 3px solid var(--ink); background: var(--bg);
+  /* ============ エコー（E-1〜E-3） ============ */
+  .echo {
+    position: fixed; inset: 0; z-index: 30; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 0 4vw 20vh; opacity: 0; transition: opacity .12s;
   }
-  .console.hidden { display: none; }
-  .who-tabs { display: flex; gap: .4rem; }
+  .echo.show { opacity: 1; }
+  .echo-who {
+    margin-bottom: .5em; color: var(--c); font-weight: 900; letter-spacing: .08em;
+    font-size: clamp(1rem, 2.2vw, 1.9rem);
+  }
+  .echo-text {
+    font-family: var(--display); white-space: nowrap; line-height: 1.15;
+    font-size: min(16vw, 26vh);
+    text-shadow: 0 0 .1em var(--c), 0 0 .45em var(--c);
+    text-shadow: 0 0 .1em var(--c), 0 0 .45em color-mix(in srgb, var(--c) 60%, transparent);
+  }
+  .echo-text .ch { display: inline-block; }
+  .echo-text .ch.in { animation: chIn .38s cubic-bezier(.2, 1.6, .35, 1) both; }
+  @keyframes chIn {
+    from { opacity: 0; transform: translateY(.35em) scale(.4); filter: blur(10px); }
+    to   { opacity: 1; transform: none; filter: none; }
+  }
+
+  /* ============ 入力ドック（UI-5） ============ */
+  .dock {
+    position: relative; z-index: 35;
+    width: min(1200px, calc(100% - 4vw)); margin: 0 auto 1rem;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .7rem;
+    padding: .75rem .85rem .6rem; border-radius: 1.1rem;
+    background: rgba(30, 17, 9, .78);
+    -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, .45);
+  }
+  .dock.hidden { display: none; }
+  .who-tabs { display: flex; flex-wrap: wrap; gap: .35rem; }
   .who-tabs button {
-    border: 2px solid var(--c); background: transparent; color: var(--c);
-    padding: .35em .8em; border-radius: 999px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; gap: .45em;
+    padding: .4em .9em; border-radius: 999px; cursor: pointer;
+    background: transparent; font-weight: 700;
+    border: 1px solid var(--c);
+    border-color: color-mix(in srgb, var(--c) 50%, transparent);
   }
-  .who-tabs button[aria-pressed="true"] { background: var(--c); color: var(--paper); }
+  .who-tabs button::before { content: ""; width: .6em; height: .6em; border-radius: 50%; background: var(--c); }
+  .who-tabs button[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: var(--on-color); }
+  .who-tabs button[aria-pressed="true"]::before { background: var(--on-color); }
   #answerInput {
-    flex: 1 1 16rem; min-width: 0; padding: .5em .8em; font-size: 1.4rem; font-weight: 700;
-    border: 3px solid var(--current, var(--ink)); border-radius: .6em; background: var(--paper); outline: none;
+    flex: 1 1 16rem; min-width: 0; padding: .55em .9em;
+    font-size: 1.3rem; font-weight: 700;
+    background: rgba(255, 243, 220, .06);
+    border: 2px solid var(--current, var(--line)); border-radius: .8rem;
+    caret-color: var(--current, var(--gold)); outline: none;
   }
+  #answerInput::placeholder { color: rgba(255, 243, 220, .35); }
   .tools { display: flex; gap: .4rem; }
-  .tools button {
-    border: 2px solid var(--ink); background: transparent; padding: .35em .8em;
-    border-radius: .5em; font-weight: 700; cursor: pointer;
-  }
-  .tools button:hover { background: var(--ink); color: var(--bg); }
-  .tools button.armed { background: var(--p1); border-color: var(--p1); color: var(--paper); }
-  .keys { width: 100%; margin: 0; font-size: .85rem; color: var(--muted); }
-  kbd { font-family: inherit; border: 1px solid currentColor; border-radius: .3em; padding: 0 .35em; }
+  .keys { width: 100%; margin: 0; color: var(--muted); font-size: .8rem; }
+
+  /* ============ パーティクル ============ */
+  #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
 
   @media (prefers-reduced-motion: reduce) {
-    .word.new, #announce p { animation: none; }
+    .ach, .theme-band .theme.reveal, .word.new, .word.landed::after, .echo-text .ch.in { animation: none; }
+    .words, .echo { transition: none; }
   }
 </style>
 </head>
@@ -169,24 +266,29 @@
 
 <!-- お題入力 -->
 <section id="setup" class="screen active" aria-label="お題入力">
-  <button id="fsBtnSetup" class="setup-fs fs-toggle" type="button">全画面</button>
+  <button id="fsBtnSetup" class="ghost setup-fs fs-toggle" type="button">全画面</button>
   <h1>お題を入力してください</h1>
-  <input id="themeInput" class="theme-field" type="text" placeholder="例：夏の終わり" autocomplete="off" autofocus>
-  <div class="count-row">
-    <span id="countLabel">回答者の人数</span>
-    <div class="stepper" role="group" aria-labelledby="countLabel">
-      <button id="countDown" type="button" aria-label="人数を減らす">−</button>
-      <output id="countOut" aria-live="polite">3</output>
-      <button id="countUp" type="button" aria-label="人数を増やす">＋</button>
+  <input id="themeInput" class="theme-field" type="text" placeholder="例：夏の終わり" autocomplete="off" autofocus aria-label="お題">
+  <div class="players">
+    <div class="count-row">
+      <span id="countLabel">回答者</span>
+      <div class="stepper" role="group" aria-labelledby="countLabel">
+        <button id="countDown" type="button" aria-label="人数を減らす">−</button>
+        <output id="countOut" aria-live="polite">3人</output>
+        <button id="countUp" type="button" aria-label="人数を増やす">＋</button>
+      </div>
     </div>
+    <div class="names" id="names" aria-label="回答者の名前（任意）"></div>
   </div>
-  <div class="names" id="names" aria-label="回答者の名前（任意）"></div>
-  <p class="hint">お題を入力して <kbd>Enter</kbd> で開始</p>
+  <div class="setup-actions">
+    <button id="startBtn" class="primary" type="button">開始する</button>
+    <p class="hint">お題の入力後に <kbd>Enter</kbd> でも開始できます</p>
+  </div>
 </section>
 
 <!-- 開始アナウンス -->
 <section id="announce" class="screen" aria-live="assertive">
-  <p>それでは開始します</p>
+  <p id="announceText" aria-label="それでは開始します"></p>
 </section>
 
 <!-- 本番ボード -->
@@ -198,61 +300,135 @@
   <main class="words empty" id="words" aria-live="polite">
     <span class="placeholder">回答者の発言を入力すると、ここに並びます</span>
   </main>
-  <footer class="console" id="console">
+  <footer class="dock" id="dock">
     <div class="who-tabs" id="whoTabs" role="group" aria-label="発言者"></div>
     <input id="answerInput" type="text" placeholder="発言をタイプして Enter" autocomplete="off" aria-label="回答者の発言">
     <div class="tools">
-      <button id="undoBtn" type="button">1つ戻す</button>
-      <button id="fsBtn" class="fs-toggle" type="button">全画面</button>
-      <button id="resetBtn" type="button">新しいお題</button>
+      <button id="undoBtn" class="ghost" type="button">1つ戻す</button>
+      <button id="fsBtn" class="ghost fs-toggle" type="button">全画面</button>
+      <button id="resetBtn" class="ghost" type="button">新しいお題</button>
     </div>
-    <p class="keys"><kbd>Enter</kbd> 追加（発言者は自動で次へ）　<kbd>Tab</kbd> 発言者切替　空欄で <kbd>Backspace</kbd> 1つ戻す　<kbd>Esc</kbd> 入力欄を隠す／出す</p>
+    <p class="keys"><kbd>Enter</kbd> 追加（発言者は自動で次へ）　<kbd>Tab</kbd> 発言者切替　空欄で <kbd>Backspace</kbd> 1つ戻す　<kbd>Esc</kbd> ドックを隠す／出す</p>
   </footer>
 </section>
 
+<!-- エコー（入力中の巨大文字） -->
+<div class="echo" id="echo" aria-hidden="true">
+  <div class="echo-who" id="echoWho"></div>
+  <div class="echo-text" id="echoText"></div>
+</div>
+
+<canvas id="fx" aria-hidden="true"></canvas>
+
 <script>
 (() => {
-  const COLORS = ['var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--p4)', 'var(--p5)', 'var(--p6)'];
+  const COLORS = ['#FF5A3C', '#53D17A', '#6FA3FF', '#C48CFF', '#3FD9CC', '#FF6FAE'];
+  const GOLD = '#F4B63F', CREAM = '#FFF3DC';
   const MIN_PLAYERS = 1, MAX_PLAYERS = COLORS.length;
   const state = { theme: '', names: [], words: [], current: 0 };
 
   const $ = id => document.getElementById(id);
   const screens = ['setup', 'announce', 'board'];
   const show = id => screens.forEach(s => $(s).classList.toggle('active', s === id));
+  const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const themeInput = $('themeInput');
   const answerInput = $('answerInput');
   const wordsEl = $('words');
-  const consoleEl = $('console');
+  const dockEl = $('dock');
+  const boardEl = $('board');
+  const echoEl = $('echo');
+  const echoWho = $('echoWho');
+  const echoText = $('echoText');
 
-  // IME変換中のEnterを無視するための判定
+  // IME変換中のEnterを無視するための判定（F-3）
   const isComposingEnter = e => e.isComposing || e.keyCode === 229;
 
-  // ---------- お題入力 ----------
+  // ============ パーティクル（Canvas） ============
+  const fx = $('fx');
+  const ctx = fx.getContext('2d');
+  let parts = [];
+  let raf = 0;
+  function sizeFx() {
+    const d = window.devicePixelRatio || 1;
+    fx.width = innerWidth * d;
+    fx.height = innerHeight * d;
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+  }
+  sizeFx();
+  window.addEventListener('resize', sizeFx);
+
+  function burst(x, y, colors, count = 36, power = 1) {
+    if (reduceMotion()) return;
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = (2 + Math.random() * 6) * power;
+      parts.push({
+        x, y,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 2.2 * power,
+        life: 1,
+        decay: .012 + Math.random() * .018,
+        size: 4 + Math.random() * 6,
+        color: colors[i % colors.length],
+        rot: Math.random() * Math.PI,
+        vr: (Math.random() - .5) * .3,
+        rect: Math.random() < .6,
+      });
+    }
+    if (!raf) raf = requestAnimationFrame(tick);
+  }
+  function tick() {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    parts = parts.filter(p => p.life > 0);
+    for (const p of parts) {
+      p.vy += .18;
+      p.vx *= .985;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vr;
+      p.life -= p.decay;
+      ctx.globalAlpha = Math.max(p.life, 0);
+      ctx.fillStyle = p.color;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      if (p.rect) ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+      else { ctx.beginPath(); ctx.arc(0, 0, p.size / 2.6, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    raf = parts.length ? requestAnimationFrame(tick) : 0;
+    if (!raf) ctx.clearRect(0, 0, innerWidth, innerHeight);
+  }
+
+  // ============ お題入力画面 ============
   themeInput.addEventListener('keydown', e => {
     if (e.key !== 'Enter' || isComposingEnter(e)) return;
     e.preventDefault();
     start();
   });
-  // ---------- 回答者の人数と名前 ----------
+  $('startBtn').addEventListener('click', start);
+
   let playerCount = 3;
-  const nameDrafts = [];   // 人数を減らしても入力済みの名前を覚えておく
+  const nameDrafts = [];   // 人数を減らしても入力済みの名前を覚えておく（S-5）
   const namesEl = $('names');
   function renderNameInputs() {
     [...namesEl.querySelectorAll('input')].forEach((inp, i) => { nameDrafts[i] = inp.value; });
     namesEl.innerHTML = '';
     for (let i = 0; i < playerCount; i++) {
       const label = document.createElement('label');
+      label.className = 'name-chip';
+      label.style.setProperty('--c', COLORS[i]);
       const dot = document.createElement('span');
       dot.className = 'dot';
-      dot.style.background = COLORS[i];
       const inp = document.createElement('input');
       inp.value = nameDrafts[i] ?? `回答者${i + 1}`;
       inp.setAttribute('aria-label', `回答者${i + 1}の名前`);
       label.append(dot, inp);
       namesEl.appendChild(label);
     }
-    $('countOut').textContent = playerCount;
+    $('countOut').textContent = `${playerCount}人`;
     $('countDown').disabled = playerCount <= MIN_PLAYERS;
     $('countUp').disabled = playerCount >= MAX_PLAYERS;
   }
@@ -267,18 +443,52 @@
     const theme = themeInput.value.trim();
     if (!theme) { themeInput.focus(); themeInput.placeholder = 'お題が空です。入力してください'; return; }
     state.theme = theme;
-    state.names = [...namesEl.querySelectorAll('input')].map((inp, i) => inp.value.trim() || `回答者${i+1}`);
+    state.names = [...namesEl.querySelectorAll('input')].map((inp, i) => inp.value.trim() || `回答者${i + 1}`);
     state.words = [];
     state.current = 0;
     $('themeText').textContent = theme;
     buildTabs();
     render();
-    show('announce');
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setTimeout(() => { show('board'); fit(); answerInput.focus(); }, reduce ? 900 : 1600);
+    playAnnounce();
+    const reduce = reduceMotion();
+    setTimeout(() => {
+      show('board');
+      revealTheme();
+      fit();
+      answerInput.focus();
+    }, reduce ? 900 : 1900);
   }
 
-  // ---------- 発言者タブ ----------
+  // ============ 開始アナウンス（A-1, E-5） ============
+  function playAnnounce() {
+    const el = $('announceText');
+    el.innerHTML = '';
+    [...'それでは開始します'].forEach((c, i) => {
+      const s = document.createElement('span');
+      s.className = 'ach';
+      s.style.setProperty('--i', i);
+      s.textContent = c;
+      s.setAttribute('aria-hidden', 'true');
+      el.appendChild(s);
+    });
+    show('announce');
+    setTimeout(() => burst(innerWidth / 2, innerHeight / 2, [...COLORS, GOLD], 110, 1.5), 650);
+  }
+
+  // ============ お題の登場（B-1, E-6） ============
+  function revealTheme() {
+    const t = $('themeText');
+    t.classList.remove('reveal');
+    if (reduceMotion()) return;
+    void t.offsetWidth;
+    t.classList.add('reveal');
+    setTimeout(() => {
+      const r = t.getBoundingClientRect();
+      burst(r.right, r.top + r.height / 2, [GOLD, '#FFD27A', CREAM], 40, .9);
+    }, 850);
+  }
+
+  // ============ 発言者 ============
   function buildTabs() {
     const tabs = $('whoTabs');
     tabs.innerHTML = '';
@@ -296,19 +506,63 @@
     const n = state.names.length;
     state.current = ((i % n) + n) % n;
     [...$('whoTabs').children].forEach((b, j) => b.setAttribute('aria-pressed', j === state.current));
-    answerInput.style.setProperty('--current', COLORS[state.current]);
+    const color = COLORS[state.current];
+    answerInput.style.setProperty('--current', color);
     answerInput.placeholder = `${state.names[state.current]} の発言をタイプして Enter`;
+    echoEl.style.setProperty('--c', color);
+    echoWho.textContent = state.names[state.current];
   }
 
-  // ---------- 発言入力 ----------
+  // ============ エコー（E-1〜E-3） ============
+  let echoPrev = [];
+  function updateEcho() {
+    const chars = [...answerInput.value];
+    if (!answerInput.value.trim()) { hideEcho(); return; }
+    boardEl.classList.add('typing');
+    echoEl.classList.add('show');
+    // 先頭から一致している文字はそのまま残し、変わった部分だけ差し替えて浮かび上がらせる
+    let p = 0;
+    while (p < chars.length && p < echoPrev.length && chars[p] === echoPrev[p]) p++;
+    while (echoText.childNodes.length > p) echoText.lastChild.remove();
+    const animate = !reduceMotion();
+    for (let i = p; i < chars.length; i++) {
+      const s = document.createElement('span');
+      s.className = animate ? 'ch in' : 'ch';
+      s.textContent = chars[i] === ' ' ? '\u00A0' : chars[i];
+      echoText.appendChild(s);
+    }
+    echoPrev = chars;
+    fitEcho();
+  }
+  function fitEcho() {
+    echoText.style.fontSize = '';
+    const max = innerWidth * .92;
+    const w = echoText.scrollWidth;
+    if (w > max) {
+      const cur = parseFloat(getComputedStyle(echoText).fontSize);
+      echoText.style.fontSize = (cur * max / w) + 'px';
+    }
+  }
+  function hideEcho() {
+    echoEl.classList.remove('show');
+    boardEl.classList.remove('typing');
+    echoText.innerHTML = '';
+    echoPrev = [];
+  }
+  answerInput.addEventListener('input', updateEcho);
+
+  // ============ 発言の入力（F-1〜F-7） ============
   answerInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !isComposingEnter(e)) {
       e.preventDefault();
       const text = answerInput.value.trim();
       if (!text) return;
+      const from = echoEl.classList.contains('show') ? echoText.getBoundingClientRect() : null;
       state.words.push({ text, who: state.current });
       answerInput.value = '';
-      render(true);
+      hideEcho();
+      render();
+      flyIn(wordsEl.lastElementChild, from);
       setCurrent(state.current + 1);
     } else if (e.key === 'Tab') {
       e.preventDefault();
@@ -319,6 +573,35 @@
     }
   });
 
+  // エコーの位置から一覧の位置へ飛ばして着地させる（D-6, E-4）
+  function flyIn(el, from) {
+    if (!el || !el.classList.contains('word')) return;
+    if (reduceMotion()) return;
+    if (!from || !el.animate) { el.classList.add('new'); return; }
+    const to = el.getBoundingClientRect();
+    if (!to.height) return;
+    const s = from.height / to.height;
+    const dx = (from.left + from.width / 2) - (to.left + to.width * s / 2);
+    const dy = from.top - to.top;
+    el.classList.add('flying');
+    const anim = el.animate(
+      [
+        { transform: `translate(${dx}px, ${dy}px) scale(${s})` },
+        { transform: 'translate(0, 0) scale(1)' },
+      ],
+      { duration: 720, easing: 'cubic-bezier(.22, .9, .24, 1)' }
+    );
+    anim.onfinish = () => {
+      // 演出中に次の発言が追加されて再描画された場合は、古い要素の着地演出を行わない（E-8）
+      if (!el.isConnected) return;
+      el.classList.remove('flying');
+      el.classList.add('landed');
+      const r = el.getBoundingClientRect();
+      const c = getComputedStyle(el).getPropertyValue('--c').trim() || GOLD;
+      burst(r.left + r.width / 2, r.top + r.height / 2, [c, GOLD, CREAM], 34, .8);
+    };
+  }
+
   function undo() {
     const last = state.words.pop();
     if (!last) return;
@@ -327,8 +610,8 @@
     answerInput.focus();
   }
 
-  // ---------- 描画 ----------
-  function render(animateLast = false) {
+  // ============ 描画（D-1〜D-8） ============
+  function render() {
     wordsEl.innerHTML = '';
     wordsEl.classList.toggle('empty', state.words.length === 0);
     if (state.words.length === 0) {
@@ -341,7 +624,7 @@
     const lastIdx = state.words.length - 1;
     state.words.forEach((w, i) => {
       const el = document.createElement('div');
-      el.className = 'word' + (i === lastIdx ? ' latest' : '') + (animateLast && i === lastIdx ? ' new' : '');
+      el.className = 'word' + (i === lastIdx ? ' latest' : '');
       el.style.setProperty('--c', COLORS[w.who]);
       const num = document.createElement('span');
       num.className = 'num';
@@ -361,10 +644,10 @@
     fit();
   }
 
-  // 単語が増えても画面に収まるよう文字サイズを自動調整
+  // 単語が増えても画面に収まるよう文字サイズを自動調整（D-8）
   function fit() {
-    if (!$('board').classList.contains('active') || state.words.length === 0) return;
-    const maxSize = Math.min(window.innerHeight * 0.14, window.innerWidth * 0.09, 150);
+    if (!boardEl.classList.contains('active') || state.words.length === 0) return;
+    const maxSize = Math.min(innerHeight * 0.13, innerWidth * 0.085, 140);
     const cells = [...wordsEl.children];
     const fits = () =>
       wordsEl.scrollHeight <= wordsEl.clientHeight + 1 &&
@@ -383,11 +666,12 @@
     }
     wordsEl.style.fontSize = lo + 'px';
   }
-  window.addEventListener('resize', fit);
+  window.addEventListener('resize', () => { fit(); if (echoEl.classList.contains('show')) fitEcho(); });
 
-  // ---------- ツール ----------
+  // ============ ツール ============
   $('undoBtn').addEventListener('click', undo);
-  // 全画面の切替（お題入力画面・本番画面のどちらのボタンからでも）
+
+  // 全画面の切替（FS-1〜FS-4）
   const fsButtons = document.querySelectorAll('.fs-toggle');
   fsButtons.forEach(btn => btn.addEventListener('click', () => {
     const d = document;
@@ -400,7 +684,8 @@
     fsButtons.forEach(btn => { btn.textContent = label; });
     setTimeout(fit, 60);
   });
-  // 公開ページでは confirm() のダイアログが表示できないため、2回押しで確定する方式にする
+
+  // 新しいお題（R-1〜R-5）。confirm() は埋め込み環境で動かないため2回押しで確定する
   const resetBtn = $('resetBtn');
   let resetArmed = null;
   function disarmReset() {
@@ -418,26 +703,27 @@
     }
     disarmReset();
     state.words = [];
+    answerInput.value = '';
+    hideEcho();
     render();
-    consoleEl.classList.remove('hidden');
+    dockEl.classList.remove('hidden');
     themeInput.value = '';
     themeInput.placeholder = '例：夏の終わり';
     show('setup');
     themeInput.focus();
   });
 
-  // Escで入力バーを隠して表示だけにする
+  // 表示専用モード（V-1, V-2）
   document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape' || !$('board').classList.contains('active')) return;
-    consoleEl.classList.toggle('hidden');
+    if (e.key !== 'Escape' || !boardEl.classList.contains('active')) return;
+    dockEl.classList.toggle('hidden');
     requestAnimationFrame(fit);
-    if (consoleEl.classList.contains('hidden')) answerInput.blur(); else answerInput.focus();
+    if (dockEl.classList.contains('hidden')) answerInput.blur(); else answerInput.focus();
   });
-  // 入力バーを隠していても、文字キーを押したら再表示して入力できるように
   document.addEventListener('keydown', e => {
-    if (!$('board').classList.contains('active') || !consoleEl.classList.contains('hidden')) return;
+    if (!boardEl.classList.contains('active') || !dockEl.classList.contains('hidden')) return;
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      consoleEl.classList.remove('hidden');
+      dockEl.classList.remove('hidden');
       requestAnimationFrame(fit);
       answerInput.focus();
     }
