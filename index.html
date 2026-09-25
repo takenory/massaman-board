@@ -307,13 +307,25 @@
     box-shadow: 0 1rem 3rem rgba(0, 0, 0, .5);
   }
   .dock.hidden { display: none; }
+  .dock.collapsed { padding: .25rem .5rem; justify-content: center; }
+  .dock.collapsed .dock-body { display: none; }
   .who-tabs { display: flex; flex-wrap: wrap; gap: .35rem; }
+  .players-strip { position: relative; z-index: 35; width: min(1200px, calc(100% - 4vw)); margin: 0 auto .55rem; display: flex; justify-content: center; }
+  .players-strip.hidden { display: none; }
+  .players-strip .who-tabs { padding: .3rem; border: 1px solid var(--line); border-radius: 5px; background: rgba(16,13,10,.42); }
+  .players-strip .who-tabs button { min-width: 7rem; padding: .58em 1.15em; border-radius: 3px; font-size: 1.05rem; }
+  body.light .players-strip .who-tabs { background: rgba(255,255,255,.7); }
+  .dock-toggle { position: absolute; right: .35rem; top: .25rem; transform: translateY(-100%); width: 2rem; height: 1.35rem; padding: 0; border: 1px solid var(--line); border-bottom: 0; border-radius: 3px 3px 0 0; background: rgba(16,13,10,.78); color: var(--muted); cursor: pointer; font-family: var(--mono); line-height: 1; }
+  .dock-toggle:hover { color: var(--bone); border-color: var(--sand); }
+  body.light .dock-toggle { background: rgba(255,255,255,.84); }
   .who-tabs button {
     padding: .4em .85em; border-radius: 3px; cursor: pointer;
     background: transparent; font-weight: 700;
     border: 1px solid var(--line); border-left: 4px solid var(--c);
   }
   .who-tabs button[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: var(--on-color); }
+  .state-icon { display: inline-block; margin-left: .3em; color: var(--signal); font-family: var(--mono); font-weight: 900; }
+  .player-box.out .state-icon { opacity: .8; }
   .player-box { display: flex; flex-direction: column; gap: .25rem; min-width: 6rem; }
   .player-box.out { opacity: .6; }
   .player-box .eliminate { font-size: .72rem; padding: .3em; border-left-width: 1px; }
@@ -416,16 +428,21 @@
   <main class="words empty" id="words" aria-live="polite">
     <span class="placeholder">発言した順に回答を並べます</span>
   </main>
-  <footer class="dock" id="dock">
+  <div class="players-strip" id="playersStrip">
     <div class="who-tabs" id="whoTabs" role="group" aria-label="発言者"></div>
-    <input id="answerInput" type="text" placeholder="発言をタイプして Enter" autocomplete="off" aria-label="回答者の発言">
-    <div class="tools">
-      <button id="undoBtn" class="ghost" type="button">一つ戻す</button>
-      <button id="fsBtn" class="ghost fs-toggle" type="button">全画面</button>
-      <button class="ghost mode-toggle" type="button" aria-label="ライトモードへ切替" title="ライトモードへ切替">☼</button>
-      <button id="resetBtn" class="ghost" type="button">次のお題</button>
+  </div>
+  <footer class="dock collapsed" id="dock">
+    <button id="dockToggle" class="dock-toggle" type="button" aria-label="入力ドックを表示" title="入力ドックを表示">⌃</button>
+    <div class="dock-body">
+      <input id="answerInput" type="text" placeholder="発言をタイプして Enter" autocomplete="off" aria-label="回答者の発言">
+      <div class="tools">
+        <button id="undoBtn" class="ghost" type="button">一つ戻す</button>
+        <button id="fsBtn" class="ghost fs-toggle" type="button">全画面</button>
+        <button class="ghost mode-toggle" type="button" aria-label="ライトモードへ切替" title="ライトモードへ切替">☼</button>
+        <button id="resetBtn" class="ghost" type="button">次のお題</button>
+      </div>
+      <p class="keys"><kbd>Enter</kbd> 追加（発言者は自動で次へ）　<kbd>Tab</kbd> 発言者切替　空欄で <kbd>Backspace</kbd> 一つ戻す　ドックは ⌃／⌄</p>
     </div>
-    <p class="keys"><kbd>Enter</kbd> 追加（発言者は自動で次へ）　<kbd>Tab</kbd> 発言者切替　空欄で <kbd>Backspace</kbd> 1つ戻す　<kbd>Esc</kbd> ドックを隠す／出す</p>
   </footer>
 </section>
 
@@ -706,7 +723,14 @@
       box.style.setProperty('--c', COLORS[i]);
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = n + (state.eliminated.has(i) ? '（脱落）' : state.winner === i ? '（勝者）' : '');
+      b.textContent = n;
+      if (state.eliminated.has(i) || state.winner === i) {
+        const icon = document.createElement('span');
+        icon.className = 'state-icon';
+        icon.textContent = state.eliminated.has(i) ? '✕' : '★';
+        icon.setAttribute('aria-label', state.eliminated.has(i) ? '脱落' : '勝者');
+        b.appendChild(icon);
+      }
       b.dataset.player = i;
       b.disabled = state.eliminated.has(i);
       b.style.setProperty('--c', COLORS[i]);
@@ -756,6 +780,15 @@
     if (e.key === 'Tab') { e.preventDefault(); }
     if (e.key === 'Escape') { e.stopPropagation(); $('closeWinner').click(); }
   });
+  function setDockHidden(hidden) {
+    dockEl.classList.toggle('collapsed', hidden);
+    const toggle = $('dockToggle');
+    toggle.textContent = hidden ? '⌃' : '⌄';
+    toggle.setAttribute('aria-label', hidden ? '入力ドックを表示' : '入力ドックを折りたたむ');
+    toggle.title = hidden ? '入力ドックを表示' : '入力ドックを折りたたむ';
+    if (hidden) answerInput.blur(); else answerInput.focus();
+  }
+  $('dockToggle').addEventListener('click', () => setDockHidden(!dockEl.classList.contains('collapsed')));
   let duplicateTimer;
   function clearDuplicate() { clearTimeout(duplicateTimer); $('duplicateEvent').hidden = true; }
   function setCurrent(i) {
@@ -1019,26 +1052,18 @@
     answerInput.value = '';
     hideEcho();
     render();
-    dockEl.classList.remove('hidden');
+    setDockHidden(false);
     themeInput.value = '';
     themeInput.placeholder = '例：夏の終わり';
     show('setup');
     themeInput.focus();
   });
 
-  // 表示専用モード（V-1, V-2）
+  // ドックを隠している間に文字を打つと自動で再表示（V-2）。Escは全画面操作に委ねる。
   document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape' || !boardEl.classList.contains('active') || !$('winnerEvent').hidden) return;
-    dockEl.classList.toggle('hidden');
-    requestAnimationFrame(fit);
-    if (dockEl.classList.contains('hidden')) answerInput.blur(); else answerInput.focus();
-  });
-  document.addEventListener('keydown', e => {
-    if (!boardEl.classList.contains('active') || !dockEl.classList.contains('hidden')) return;
+    if (!boardEl.classList.contains('active') || !dockEl.classList.contains('collapsed')) return;
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      dockEl.classList.remove('hidden');
-      requestAnimationFrame(fit);
-      answerInput.focus();
+      setDockHidden(false);
     }
   });
 })();
