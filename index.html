@@ -336,13 +336,16 @@
   .event-overlay p { margin: 0; max-width: 100%; overflow-wrap: anywhere; font-family: var(--mincho); font-size: clamp(2rem, 9vw, 7rem); }
   #winnerEvent { overflow: hidden; isolation: isolate; background: radial-gradient(circle at 50% 48%, rgba(201,165,106,.18), transparent 42%), rgba(16,13,10,.94); }
   body.light #winnerEvent { background: radial-gradient(circle at 50% 48%, rgba(201,165,106,.22), transparent 42%), rgba(248,247,243,.96); }
-  #winnerEvent::before { content: ""; position: absolute; inset: 8%; border: 1px solid rgba(201,165,106,.25); background: repeating-linear-gradient(0deg, transparent 0 18px, rgba(237,227,207,.035) 19px 20px); opacity: .55; pointer-events: none; z-index: -1; }
+  #winnerEvent::before { content: ""; position: absolute; inset: -100%; border-radius: 50%; background: repeating-conic-gradient(from 0deg, rgba(201,165,106,.12) 0deg 7deg, transparent 7deg 18deg), repeating-linear-gradient(0deg, transparent 0 18px, rgba(237,227,207,.035) 19px 20px); opacity: .42; pointer-events: none; z-index: -1; }
   #winnerEvent::after { content: "勝者確定"; position: absolute; top: 16%; right: 10%; color: var(--signal); border: .12em solid var(--signal); padding: .25em .45em; font-family: var(--mincho); font-weight: 900; letter-spacing: .15em; transform: rotate(-8deg) scale(0); opacity: 0; pointer-events: none; }
   #winnerEvent.winner-reveal::after { animation: winner-stamp .55s .35s cubic-bezier(.3,1.6,.5,1) forwards; }
+  #winnerEvent.winner-reveal::before { animation: winner-rays 9s linear infinite; }
+  .winner-kicker { margin: 0; color: var(--signal); font-family: var(--mono); font-size: clamp(1rem, 2vw, 1.5rem); letter-spacing: .35em; opacity: .9; }
   #winnerEvent.winner-reveal #winnerTitle { animation: winner-title .55s ease-out both; }
   #winnerEvent.winner-reveal #winnerName { animation: winner-name .8s .18s cubic-bezier(.2,1.4,.4,1) both; }
   #winnerEvent.winner-reveal #closeWinner { animation: winner-button .45s .55s ease-out both; }
   @keyframes winner-stamp { from { transform: rotate(-8deg) scale(2.8); opacity: 0; } to { transform: rotate(-8deg) scale(1); opacity: .9; } }
+  @keyframes winner-rays { to { transform: rotate(360deg); } }
   @keyframes winner-title { from { opacity: 0; letter-spacing: .8em; transform: translateY(-.5em); } to { opacity: 1; letter-spacing: .15em; transform: none; } }
   @keyframes winner-name { from { opacity: 0; transform: scale(.55); text-shadow: 0 0 0 transparent; } 65% { opacity: 1; transform: scale(1.06); text-shadow: 0 0 .15em var(--sand), 0 0 1em rgba(201,165,106,.55); } to { transform: scale(1); text-shadow: 0 0 .08em var(--sand), 0 0 .45em rgba(201,165,106,.3); } }
   @keyframes winner-button { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: none; } }
@@ -374,7 +377,7 @@
   #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
 
   @media (prefers-reduced-motion: reduce) {
-    .rec-dot, .letterbox, .ch.lock, .theme-band .tag.stamp, .word.new, .word.stamped, .word.stamped::after, #winnerEvent.winner-reveal::after, #winnerEvent.winner-reveal #winnerTitle, #winnerEvent.winner-reveal #winnerName, #winnerEvent.winner-reveal #closeWinner { animation: none; }
+    .rec-dot, .letterbox, .ch.lock, .theme-band .tag.stamp, .word.new, .word.stamped, .word.stamped::after, #winnerEvent.winner-reveal::before, #winnerEvent.winner-reveal::after, #winnerEvent.winner-reveal #winnerTitle, #winnerEvent.winner-reveal #winnerName, #winnerEvent.winner-reveal #closeWinner { animation: none; }
     .words, .echo { transition: none; }
   }
 </style>
@@ -457,7 +460,7 @@
   <span>記録せず、そのままの手番で続けます</span>
 </div>
 <div id="winnerEvent" class="event-overlay" role="dialog" aria-modal="true" aria-labelledby="winnerTitle" aria-describedby="winnerName" hidden>
-  <h2 id="winnerTitle">勝者</h2><p id="winnerName"></p>
+  <p class="winner-kicker">勝者</p><h2 id="winnerTitle">おめでとう！</h2><p id="winnerName"></p>
   <button id="closeWinner" class="ghost" type="button">ボードに戻る</button>
 </div>
 <canvas id="fx" aria-hidden="true"></canvas>
