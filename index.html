@@ -15,6 +15,9 @@
     --p1: #C8321F;        /* 唐辛子 */
     --p2: #2F7A3E;        /* バジル */
     --p3: #2B4F9E;        /* 藍 */
+    --p4: #7B3F9E;        /* 紫玉ねぎ */
+    --p5: #0E7C7B;        /* ミント */
+    --p6: #B0306A;        /* ビーツ */
     --muted: rgba(58,31,16,.55);
     box-sizing: border-box;
     padding-top: env(safe-area-inset-top, 0px);
@@ -24,11 +27,13 @@
     :root:not([data-theme="light"]) {
       --bg: #2A1A0E; --ink: #FFE9BF; --paper: #3B2614;
       --p1: #FF6B52; --p2: #6CCB7E; --p3: #7FA2F2; --muted: rgba(255,233,191,.55);
+      --p4: #C08CF0; --p5: #4FD1C5; --p6: #F07AB0;
     }
   }
   :root[data-theme="dark"] {
     --bg: #2A1A0E; --ink: #FFE9BF; --paper: #3B2614;
     --p1: #FF6B52; --p2: #6CCB7E; --p3: #7FA2F2; --muted: rgba(255,233,191,.55);
+    --p4: #C08CF0; --p5: #4FD1C5; --p6: #F07AB0;
   }
   *, *::before, *::after { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
@@ -61,6 +66,14 @@
     background: var(--paper); font-weight: 700;
   }
   .hint { color: var(--muted); font-size: 1rem; margin: 0; text-align: center; }
+  .count-row { display: flex; align-items: center; gap: 1rem; font-weight: 700; font-size: 1.2rem; }
+  .stepper { display: flex; align-items: center; border: 2px solid var(--ink); border-radius: .6em; overflow: hidden; }
+  .stepper button {
+    width: 2.2em; height: 2.2em; border: none; background: transparent; font-weight: 900; font-size: 1.1em; cursor: pointer;
+  }
+  .stepper button:hover:not(:disabled) { background: var(--ink); color: var(--bg); }
+  .stepper button:disabled { opacity: .3; cursor: default; }
+  .stepper output { min-width: 2.4em; text-align: center; font-weight: 900; font-size: 1.2em; font-variant-numeric: tabular-nums; }
   .setup-fs {
     position: absolute; top: 1.2rem; right: 1.2rem;
     border: 2px solid var(--ink); background: transparent; padding: .35em .9em;
@@ -83,12 +96,12 @@
   .theme-band .tag { font-weight: 700; font-size: clamp(1rem, 2.4vw, 2rem); opacity: .75; white-space: nowrap; }
   .theme-band .theme { font-weight: 900; font-size: clamp(2rem, 7vw, 6.5rem); line-height: 1.1; word-break: break-word; }
 
-  /* 上→下に6個ずつ、埋まったら右の列へ */
+  /* 上→下に（回答者数×2）個ずつ、埋まったら右の列へ */
   .words {
     flex: 1; min-height: 0; overflow: hidden;
     padding: 3vh 4vw;
     display: grid;
-    grid-template-rows: repeat(6, auto);
+    grid-template-rows: repeat(var(--rows, 6), auto);
     grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
     grid-auto-flow: column;
     align-content: start; gap: .3em .5em;
@@ -159,11 +172,15 @@
   <button id="fsBtnSetup" class="setup-fs fs-toggle" type="button">全画面</button>
   <h1>お題を入力してください</h1>
   <input id="themeInput" class="theme-field" type="text" placeholder="例：夏の終わり" autocomplete="off" autofocus>
-  <div class="names" aria-label="回答者の名前（任意）">
-    <label><span class="dot" style="background:var(--p1)"></span><input id="name0" value="回答者1" aria-label="回答者1の名前"></label>
-    <label><span class="dot" style="background:var(--p2)"></span><input id="name1" value="回答者2" aria-label="回答者2の名前"></label>
-    <label><span class="dot" style="background:var(--p3)"></span><input id="name2" value="回答者3" aria-label="回答者3の名前"></label>
+  <div class="count-row">
+    <span id="countLabel">回答者の人数</span>
+    <div class="stepper" role="group" aria-labelledby="countLabel">
+      <button id="countDown" type="button" aria-label="人数を減らす">−</button>
+      <output id="countOut" aria-live="polite">3</output>
+      <button id="countUp" type="button" aria-label="人数を増やす">＋</button>
+    </div>
   </div>
+  <div class="names" id="names" aria-label="回答者の名前（任意）"></div>
   <p class="hint">お題を入力して <kbd>Enter</kbd> で開始</p>
 </section>
 
@@ -195,7 +212,8 @@
 
 <script>
 (() => {
-  const COLORS = ['var(--p1)', 'var(--p2)', 'var(--p3)'];
+  const COLORS = ['var(--p1)', 'var(--p2)', 'var(--p3)', 'var(--p4)', 'var(--p5)', 'var(--p6)'];
+  const MIN_PLAYERS = 1, MAX_PLAYERS = COLORS.length;
   const state = { theme: '', names: [], words: [], current: 0 };
 
   const $ = id => document.getElementById(id);
@@ -216,15 +234,40 @@
     e.preventDefault();
     start();
   });
-  [0,1,2].forEach(i => $('name' + i).addEventListener('keydown', e => {
+  // ---------- 回答者の人数と名前 ----------
+  let playerCount = 3;
+  const nameDrafts = [];   // 人数を減らしても入力済みの名前を覚えておく
+  const namesEl = $('names');
+  function renderNameInputs() {
+    [...namesEl.querySelectorAll('input')].forEach((inp, i) => { nameDrafts[i] = inp.value; });
+    namesEl.innerHTML = '';
+    for (let i = 0; i < playerCount; i++) {
+      const label = document.createElement('label');
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = COLORS[i];
+      const inp = document.createElement('input');
+      inp.value = nameDrafts[i] ?? `回答者${i + 1}`;
+      inp.setAttribute('aria-label', `回答者${i + 1}の名前`);
+      label.append(dot, inp);
+      namesEl.appendChild(label);
+    }
+    $('countOut').textContent = playerCount;
+    $('countDown').disabled = playerCount <= MIN_PLAYERS;
+    $('countUp').disabled = playerCount >= MAX_PLAYERS;
+  }
+  $('countDown').addEventListener('click', () => { playerCount = Math.max(MIN_PLAYERS, playerCount - 1); renderNameInputs(); });
+  $('countUp').addEventListener('click', () => { playerCount = Math.min(MAX_PLAYERS, playerCount + 1); renderNameInputs(); });
+  namesEl.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !isComposingEnter(e)) { e.preventDefault(); start(); }
-  }));
+  });
+  renderNameInputs();
 
   function start() {
     const theme = themeInput.value.trim();
     if (!theme) { themeInput.focus(); themeInput.placeholder = 'お題が空です。入力してください'; return; }
     state.theme = theme;
-    state.names = [0,1,2].map(i => $('name' + i).value.trim() || `回答者${i+1}`);
+    state.names = [...namesEl.querySelectorAll('input')].map((inp, i) => inp.value.trim() || `回答者${i+1}`);
     state.words = [];
     state.current = 0;
     $('themeText').textContent = theme;
@@ -250,7 +293,8 @@
     setCurrent(0);
   }
   function setCurrent(i) {
-    state.current = (i + 3) % 3;
+    const n = state.names.length;
+    state.current = ((i % n) + n) % n;
     [...$('whoTabs').children].forEach((b, j) => b.setAttribute('aria-pressed', j === state.current));
     answerInput.style.setProperty('--current', COLORS[state.current]);
     answerInput.placeholder = `${state.names[state.current]} の発言をタイプして Enter`;
@@ -326,9 +370,10 @@
       wordsEl.scrollHeight <= wordsEl.clientHeight + 1 &&
       cells.every(c => c.scrollWidth <= c.clientWidth + 1);
 
-    // 1列6個。最初の3列（18個）までは列幅を固定して、表示位置が動かないようにする
-    const PER_COL = 6;
+    // 1列の行数は「回答者数×2」。最初の3列までは列幅を固定して、表示位置が動かないようにする
+    const PER_COL = state.names.length * 2;
     const cols = Math.max(3, Math.ceil(state.words.length / PER_COL));
+    wordsEl.style.setProperty('--rows', PER_COL);
     wordsEl.style.setProperty('--cols', cols);
     let lo = 10, hi = maxSize;
     for (let k = 0; k < 14; k++) {
