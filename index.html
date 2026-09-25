@@ -377,6 +377,7 @@
 
   /* ============ 砂塵（Canvas） ============ */
   #fx { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
+  #fx.winner-fx { z-index: 70; }
 
   @media (prefers-reduced-motion: reduce) {
     .rec-dot, .letterbox, .ch.lock, .theme-band .tag.stamp, .word.new, .word.stamped, .word.stamped::after, #winnerEvent.winner-reveal::before, #winnerEvent.winner-reveal::after, #winnerEvent.winner-reveal #winnerTitle, #winnerEvent.winner-reveal #winnerName, #winnerEvent.winner-reveal #closeWinner { animation: none; }
@@ -470,9 +471,10 @@
 <script>
 (() => {
   const COLORS = ['#E0533B', '#D9A441', '#3FA595', '#6F96CC', '#9DB46B', '#A881BE'];
-  const SAND = '#C9A56A', BONE = '#EDE3CF', DUNE = '#8A6E47';
+  const SAND = '#C9A56A', GOLD = '#F1C75B', BONE = '#EDE3CF', DUNE = '#8A6E47';
   const MIN_PLAYERS = 2, MAX_PLAYERS = COLORS.length;
   const state = { theme: '', names: [], words: [], current: 0, eliminated: new Set(), winner: null };
+  let winnerDustTimer = 0;
 
   const $ = id => document.getElementById(id);
   const screens = ['entry', 'setup', 'announce', 'board'];
@@ -563,7 +565,7 @@
     if (!raf) raf = requestAnimationFrame(tick);
   }
   // 画面を横切る砂嵐の帯
-  function gust(y, height, count = 220) {
+  function gust(y, height, count = 220, colors = [SAND, BONE, DUNE]) {
     if (reduceMotion()) return;
     for (let i = 0; i < count; i++) {
       grains.push({
@@ -571,10 +573,31 @@
         vx: 6 + Math.random() * 12, vy: (Math.random() - .5) * .8,
         g: 0, life: 1, decay: .006 + Math.random() * .01,
         r: .6 + Math.random() * 1.8,
-        color: [SAND, BONE, DUNE][i % 3],
+        color: colors[i % colors.length],
       });
     }
     if (!raf) raf = requestAnimationFrame(tick);
+  }
+  function startWinnerDust() {
+    if (reduceMotion() || winnerDustTimer) return;
+    const sprinkle = () => {
+      for (let i = 0; i < 14; i++) {
+        grains.push({
+          x: Math.random() * innerWidth, y: -8 - Math.random() * 30,
+          vx: (Math.random() - .5) * .7, vy: 1.2 + Math.random() * 2.2,
+          g: .015 + Math.random() * .02, life: 1, decay: .003 + Math.random() * .003,
+          r: .8 + Math.random() * 2, color: [GOLD, SAND, BONE][i % 3],
+        });
+      }
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    sprinkle();
+    winnerDustTimer = setInterval(sprinkle, 180);
+  }
+  function stopWinnerDust() {
+    if (!winnerDustTimer) return;
+    clearInterval(winnerDustTimer);
+    winnerDustTimer = 0;
   }
   function tick() {
     ctx.clearRect(0, 0, innerWidth, innerHeight);
@@ -770,14 +793,17 @@
       void winnerEvent.offsetWidth;
       winnerEvent.classList.add('winner-reveal');
       winnerEvent.hidden = false;
+      fx.classList.add('winner-fx');
       boardEl.inert = true;
       $('closeWinner').focus();
-      gust(innerHeight / 2, innerHeight * .4);
+      startWinnerDust();
     } else answerInput.focus();
   }
   $('closeWinner').addEventListener('click', () => {
     $('winnerEvent').hidden = true;
     $('winnerEvent').classList.remove('winner-reveal');
+    stopWinnerDust();
+    fx.classList.remove('winner-fx');
     boardEl.inert = false;
     $('resetBtn').focus();
   });
