@@ -341,9 +341,11 @@
   #winnerEvent.winner-reveal::after { animation: winner-stamp .55s .35s cubic-bezier(.3,1.6,.5,1) forwards; }
   #winnerEvent.winner-reveal::before { animation: winner-rays 9s linear infinite; }
   .winner-kicker { margin: 0; color: var(--signal); font-family: var(--mono); font-size: clamp(1rem, 2vw, 1.5rem); letter-spacing: .35em; opacity: .9; }
-  #winnerEvent.winner-reveal #winnerTitle { animation: winner-title .55s ease-out both; }
-  #winnerEvent.winner-reveal #winnerName { animation: winner-name .8s .18s cubic-bezier(.2,1.4,.4,1) both; }
-  #winnerEvent.winner-reveal #closeWinner { animation: winner-button .45s .55s ease-out both; }
+  #winnerName { display: flex; align-items: baseline; justify-content: center; gap: .16em; }
+  #winnerName small { font-size: .28em; font-weight: 700; letter-spacing: .08em; }
+  #winnerEvent.winner-reveal #winnerTitle { animation: winner-title .55s .45s ease-out both; }
+  #winnerEvent.winner-reveal #winnerName { animation: winner-name .8s .1s cubic-bezier(.2,1.4,.4,1) both; }
+  #winnerEvent.winner-reveal #closeWinner { animation: winner-button .45s .9s ease-out both; }
   @keyframes winner-stamp { from { transform: rotate(-8deg) scale(2.8); opacity: 0; } to { transform: rotate(-8deg) scale(1); opacity: .9; } }
   @keyframes winner-rays { to { transform: rotate(360deg); } }
   @keyframes winner-title { from { opacity: 0; letter-spacing: .8em; transform: translateY(-.5em); } to { opacity: 1; letter-spacing: .15em; transform: none; } }
@@ -460,7 +462,7 @@
   <span>記録せず、そのままの手番で続けます</span>
 </div>
 <div id="winnerEvent" class="event-overlay" role="dialog" aria-modal="true" aria-labelledby="winnerTitle" aria-describedby="winnerName" hidden>
-  <p class="winner-kicker">勝者</p><h2 id="winnerTitle">おめでとう！</h2><p id="winnerName"></p>
+  <p class="winner-kicker">勝者</p><p id="winnerName"><span id="winnerNameText"></span><small>さん</small></p><h2 id="winnerTitle">おめでとう！</h2>
   <button id="closeWinner" class="ghost" type="button">ボードに戻る</button>
 </div>
 <canvas id="fx" aria-hidden="true"></canvas>
@@ -762,7 +764,7 @@
     buildTabs();
     // 脱落・復帰では発言内容が変わらないため、既存パネルの文字サイズを維持する
     if (state.winner !== null) {
-      $('winnerName').textContent = state.names[state.winner];
+      $('winnerNameText').textContent = state.names[state.winner];
       const winnerEvent = $('winnerEvent');
       winnerEvent.classList.remove('winner-reveal');
       void winnerEvent.offsetWidth;
