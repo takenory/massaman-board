@@ -392,7 +392,15 @@
     position: relative; opacity: 1; color: var(--muted); border-color: #E01014;
     background: rgba(224,16,20,.08);
   }
-  .player-box .eliminate { font-size: .72rem; padding: .3em; border-left-width: 1px; }
+  .players-strip .who-tabs .eliminate {
+    align-self: center; min-width: 3.5rem; min-height: 24px;
+    padding: .15rem .55rem; font-size: .7rem; font-weight: 500; line-height: 1.2;
+    color: var(--muted); border: 1px solid var(--line); background: transparent;
+  }
+  .players-strip .who-tabs .eliminate:hover:not(:disabled),
+  .players-strip .who-tabs .eliminate:focus-visible {
+    color: var(--bone); border-color: var(--faint); background: var(--card);
+  }
   .who-tabs button:disabled { cursor: default; }
   .event-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(16,13,10,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem; padding: 5vw; text-align: center; }
   .event-overlay[hidden] { display: none; }
@@ -843,8 +851,10 @@
       const mark = document.createElement('button');
       mark.type = 'button';
       mark.className = 'eliminate';
-      mark.textContent = state.eliminated.has(i) ? '復帰させる' : '脱落にする';
-      mark.setAttribute('aria-label', `${n}を${mark.textContent}`);
+      mark.textContent = state.eliminated.has(i) ? '復帰' : '脱落';
+      const actionLabel = `${n}を${state.eliminated.has(i) ? '復帰させる' : '脱落にする'}`;
+      mark.setAttribute('aria-label', actionLabel);
+      mark.title = actionLabel;
       mark.disabled = !state.eliminated.has(i) && activePlayers().length <= 1;
       mark.addEventListener('click', () => toggleElimination(i));
       box.append(b, mark);
