@@ -117,6 +117,59 @@
   }
   @keyframes blink { 50% { opacity: .15; } }
 
+  /* ============ オープニング ============ */
+  #opening {
+    flex-direction: column; align-items: center; justify-content: center;
+    gap: clamp(1.5rem, 5vh, 3.5rem); padding: 5rem 5vw 3rem;
+    text-align: center; overflow: hidden; isolation: isolate;
+    background: linear-gradient(180deg, #24282A, #191D1F);
+  }
+  body.light #opening { background: linear-gradient(180deg, #FFFFFF, #EAE8E3); }
+  #opening::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(ellipse at 50% 48%, rgba(224,16,20,.1), transparent 65%);
+  }
+  #opening.active::before { animation: opening-glow 2s ease-out both; }
+  #openingTitle {
+    margin: 0; font-family: "Bodoni 72", Didot, "Times New Roman", serif; font-weight: 700;
+    font-size: clamp(2rem, 12.5vw, 13rem); line-height: 1.2; letter-spacing: -.025em;
+    perspective: 900px;
+  }
+  #openingTitle > span { display: block; }
+  #openingTitle > span:last-child { margin-top: .75em; font-size: .16em; letter-spacing: .65em; padding-left: .65em; }
+  .title-letter {
+    display: inline-block; position: relative;
+    color: #E01014;
+    filter: drop-shadow(0 0 .025em rgba(224,16,20,.18));
+    transform-origin: 50% 70%;
+  }
+  #opening.active .title-letter {
+    animation: title-letter-arrive 850ms cubic-bezier(.16,1,.3,1) both;
+    animation-delay: var(--letter-delay);
+  }
+  .opening-enter {
+    border: 1px solid var(--faint); border-radius: 3px; background: transparent;
+    padding: .6em 1.6em; font: 1rem var(--mono); letter-spacing: .15em;
+    color: var(--muted); cursor: pointer; transition: color .2s, border-color .2s;
+  }
+  .opening-enter:hover { color: var(--bone); border-color: var(--sand); }
+  .opening-rule { width: min(34rem, 75vw); height: 1px; background: linear-gradient(90deg, transparent, var(--sand), transparent); }
+  #opening.active .opening-rule { animation: opening-rule 1.6s ease-out both; }
+  .opening-actions { display: grid; justify-items: center; gap: 1rem; }
+  @keyframes title-letter-arrive {
+    0% { opacity: 0; transform: translate3d(0, -.14em, 160px) scale(1.7) rotateY(-18deg); filter: blur(12px); }
+    48% { opacity: 1; transform: translate3d(0, .015em, 0) scale(.97); filter: blur(0) drop-shadow(0 0 .13em rgba(255,38,42,.85)); }
+    72% { transform: scale(1.02); }
+    100% { opacity: 1; transform: none; filter: drop-shadow(0 0 .025em rgba(224,16,20,.18)); }
+  }
+  @keyframes opening-glow { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+  @keyframes opening-rule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @media (max-height: 500px) {
+    #opening { gap: .7rem; padding-block: 4rem 1rem; }
+    #openingTitle { font-size: min(9vw, 18vh); }
+    .opening-actions { gap: .5rem; }
+  }
+
   /* ============ お題入力画面 ============ */
   #entry, #setup {
     flex-direction: column; align-items: center; justify-content: center;
@@ -276,6 +329,9 @@
     animation: ripple .7s ease-out forwards;
   }
   @keyframes ripple { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.18, 1.7); } }
+  /* 同期的なサイズ測定中だけ変形と波紋を除外し、通常のパネル寸法を測る。 */
+  .words.measuring .word { transform: none !important; }
+  .words.measuring .word::after { content: none !important; }
 
   /* ============ エコー（E-1〜E-3） ============ */
   .echo {
@@ -382,6 +438,7 @@
   #fx.winner-fx { z-index: 70; }
 
   @media (prefers-reduced-motion: reduce) {
+    #opening.active::before, #opening.active .title-letter, #opening.active .opening-rule { animation: none; }
     .rec-dot, .letterbox, .ch.lock, .theme-band .tag.stamp, .word.new, .word.stamped, .word.stamped::after, #winnerEvent.winner-reveal::before, #winnerEvent.winner-reveal::after, #winnerEvent.winner-reveal #winnerTitle, #winnerEvent.winner-reveal #winnerName, #winnerEvent.winner-reveal #closeWinner { animation: none; }
     .words, .echo { transition: none; }
   }
@@ -389,8 +446,19 @@
 </head>
 <body>
 
+<!-- オープニング -->
+<section id="opening" class="screen active" aria-labelledby="openingTitle">
+  <button class="ghost setup-fs fs-toggle" type="button">全画面</button>
+  <button class="ghost mode-toggle" type="button" aria-label="ライトモードへ切替" title="ライトモードへ切替">☼</button>
+  <h1 id="openingTitle" aria-label="マッサマンゲーム"><span id="openingName">MASSAMAN</span><span id="openingGame">GAME</span></h1>
+  <div class="opening-rule" aria-hidden="true"></div>
+  <div class="opening-actions">
+    <button id="openingStart" class="opening-enter" type="button" aria-label="Enter：挑戦者入力へ">Enter</button>
+  </div>
+</section>
+
 <!-- お題入力 -->
-<section id="entry" class="screen active" aria-label="参加者エントリー">
+<section id="entry" class="screen" aria-label="参加者エントリー">
   <button id="fsBtnSetup" class="ghost setup-fs fs-toggle" type="button">全画面</button>
   <button class="ghost mode-toggle" type="button" aria-label="ライトモードへ切替" title="ライトモードへ切替">☼</button>
   <h1 id="entryHeading" hidden>最初の挑戦者は？</h1>
@@ -448,6 +516,7 @@
         <button id="fsBtn" class="ghost fs-toggle" type="button">全画面</button>
         <button class="ghost mode-toggle" type="button" aria-label="ライトモードへ切替" title="ライトモードへ切替">☼</button>
         <button id="resetBtn" class="ghost" type="button">次のお題</button>
+        <button id="titleBtn" class="ghost" type="button">タイトルに戻る</button>
       </div>
       <p class="keys"><kbd>Enter</kbd> 追加（発言者は自動で次へ）　<kbd>Tab</kbd> 発言者切替　空欄で <kbd>Backspace</kbd> 一つ戻す　ドックは ⌃／⌄</p>
     </div>
@@ -479,7 +548,7 @@
   let winnerDustTimer = 0;
 
   const $ = id => document.getElementById(id);
-  const screens = ['entry', 'setup', 'announce', 'board'];
+  const screens = ['opening', 'entry', 'setup', 'announce', 'board'];
   const show = id => screens.forEach(s => $(s).classList.toggle('active', s === id));
   const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
   const pad2 = n => String(n).padStart(2, '0');
@@ -683,7 +752,6 @@
     openEntry();
   });
   renderEntries();
-  nameInput.focus();
   function completeEntry() {
     if (nameDrafts.length < MIN_PLAYERS) return;
     if (nameInput.value.trim()) { $('entryError').textContent = 'Enterでエントリーしてね'; nameInput.focus(); return; }
@@ -1036,15 +1104,32 @@
     const cols = Math.max(3, Math.ceil(state.words.length / PER_COL));
     wordsEl.style.setProperty('--rows', PER_COL);
     wordsEl.style.setProperty('--cols', cols);
-    let lo = 10, hi = maxSize;
-    for (let k = 0; k < 14; k++) {
-      const mid = (lo + hi) / 2;
-      wordsEl.style.fontSize = mid + 'px';
-      if (fits()) lo = mid; else hi = mid;
+    wordsEl.classList.add('measuring');
+    try {
+      let lo = 10, hi = maxSize;
+      for (let k = 0; k < 14; k++) {
+        const mid = (lo + hi) / 2;
+        wordsEl.style.fontSize = mid + 'px';
+        if (fits()) lo = mid; else hi = mid;
+      }
+      wordsEl.style.fontSize = lo + 'px';
+    } finally {
+      wordsEl.classList.remove('measuring');
     }
-    wordsEl.style.fontSize = lo + 'px';
   }
-  window.addEventListener('resize', () => { fit(); if (echoEl.classList.contains('show')) fitEcho(); });
+  let fitFrame = 0;
+  function scheduleFit() {
+    if (fitFrame) return;
+    fitFrame = requestAnimationFrame(() => {
+      fitFrame = 0;
+      fit();
+      if (echoEl.classList.contains('show')) fitEcho();
+    });
+  }
+  window.addEventListener('resize', scheduleFit);
+  // 全画面遷移完了やドック開閉後の、実際の表示領域の変化にも追従する。
+  new ResizeObserver(scheduleFit).observe(wordsEl);
+  document.fonts.ready.then(scheduleFit);
 
   // ============ ツール ============
   $('undoBtn').addEventListener('click', undo);
@@ -1055,12 +1140,12 @@
     const d = document;
     if (!d.fullscreenElement) d.documentElement.requestFullscreen?.().catch(() => {});
     else d.exitFullscreen?.();
-    ($('entry').classList.contains('active') ? (nameInput.disabled ? $('entryBtn') : nameInput) : $('setup').classList.contains('active') ? themeInput : answerInput).focus();
+    focusActiveInput();
   }));
   document.addEventListener('fullscreenchange', () => {
     const label = document.fullscreenElement ? '全画面を終了' : '全画面';
     fsButtons.forEach(btn => { btn.textContent = label; });
-    setTimeout(fit, 60);
+    scheduleFit();
   });
 
   // 表示モード切替（夜の会場／屋外の明るい環境）
@@ -1074,9 +1159,79 @@
   modeButtons.forEach(btn => btn.addEventListener('click', () => {
     document.body.classList.toggle('light');
     updateModeLabels();
-    ($('entry').classList.contains('active') ? (nameInput.disabled ? $('entryBtn') : nameInput) : $('setup').classList.contains('active') ? themeInput : answerInput).focus();
+    focusActiveInput();
   }));
   updateModeLabels();
+
+  function focusActiveInput() {
+    ($('opening').classList.contains('active') ? $('openingStart') : $('entry').classList.contains('active') ? (nameInput.disabled ? $('entryBtn') : nameInput) : $('setup').classList.contains('active') ? themeInput : answerInput).focus();
+  }
+
+  function clearOpeningEffects() {
+    grains = [];
+    cancelAnimationFrame(raf);
+    raf = 0;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+  }
+  function revealOpeningTitle() {
+    let index = 0;
+    for (const [id, text] of [['openingName', 'MASSAMAN'], ['openingGame', 'GAME']]) {
+      const line = $(id);
+      line.replaceChildren();
+      for (const char of text) {
+        const letter = document.createElement('span');
+        letter.className = 'title-letter';
+        letter.textContent = char;
+        letter.setAttribute('aria-hidden', 'true');
+        letter.style.setProperty('--letter-delay', `${220 + index++ * 180}ms`);
+        line.appendChild(letter);
+      }
+    }
+  }
+  function openTitle() {
+    disarmReset();
+    clearDuplicate();
+    stopWinnerDust();
+    clearOpeningEffects();
+    hideEcho();
+    state.theme = '';
+    state.names = [];
+    state.words = [];
+    state.current = 0;
+    state.eliminated.clear();
+    state.winner = null;
+    nameDrafts.length = 0;
+    nameInput.value = themeInput.value = answerInput.value = '';
+    themeInput.placeholder = 'お題';
+    answerInput.disabled = false;
+    $('winnerEvent').hidden = true;
+    $('winnerEvent').classList.remove('winner-reveal');
+    fx.classList.remove('winner-fx');
+    boardEl.inert = false;
+    $('whoTabs').replaceChildren();
+    $('setupNames').replaceChildren();
+    $('themeText').textContent = '';
+    renderEntries();
+    render();
+    setDockHidden(true);
+    show('opening');
+    revealOpeningTitle();
+    gust(innerHeight * .55, innerHeight * .4);
+    $('openingStart').focus();
+  }
+  function enterFromTitle() {
+    if (!$('opening').classList.contains('active')) return;
+    clearOpeningEffects();
+    openEntry();
+  }
+  $('openingStart').addEventListener('click', enterFromTitle);
+  $('titleBtn').addEventListener('click', openTitle);
+  document.addEventListener('keydown', e => {
+    if (!$('opening').classList.contains('active') || e.key !== 'Enter') return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (!e.repeat && !isComposingEnter(e)) enterFromTitle();
+  }, true);
 
   // 新しいお題（R-1〜R-5）。confirm() は埋め込み環境で動かないため2回押しで確定する
   const resetBtn = $('resetBtn');
@@ -1116,6 +1271,7 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key.length === 1 || e.key === 'Process' || e.keyCode === 229) answerInput.focus();
   }, true);
+  openTitle();
 })();
 </script>
 </body>
