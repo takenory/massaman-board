@@ -382,9 +382,16 @@
   }
   .who-tabs button[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: var(--on-color); }
   .state-icon { display: inline-block; margin-left: .3em; color: var(--signal); font-family: var(--mono); font-weight: 900; }
-  .player-box.out .state-icon { opacity: .8; }
+  .player-box.out .state-icon {
+    position: absolute; inset: 0; display: grid; place-items: center; margin: 0;
+    color: #E01014; font-family: Arial, sans-serif; font-size: 2.2rem; line-height: 1;
+    text-shadow: 0 0 .12em rgba(224,16,20,.35); pointer-events: none;
+  }
   .player-box { display: flex; flex-direction: column; gap: .25rem; min-width: 6rem; }
-  .player-box.out { opacity: .6; }
+  .player-box.out > [data-player] {
+    position: relative; opacity: 1; color: var(--muted); border-color: #E01014;
+    background: rgba(224,16,20,.08);
+  }
   .player-box .eliminate { font-size: .72rem; padding: .3em; border-left-width: 1px; }
   .who-tabs button:disabled { cursor: default; }
   .event-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(16,13,10,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem; padding: 5vw; text-align: center; }
